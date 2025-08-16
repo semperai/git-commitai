@@ -9,18 +9,18 @@ class TestStagedFiles:
 
     def test_get_staged_files(self):
         """Test retrieving staged file contents."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             # Mock the sequence of commands that will be called
-            def side_effect(cmd, check=True):
-                if "git diff --cached --name-only" in cmd:
+            def side_effect(args, check=True):
+                if "diff" in args and "--cached" in args and "--name-only" in args:
                     return "file1.py\nfile2.md"
-                elif "git diff --cached --numstat -- file1.py" in cmd:
+                elif "diff" in args and "--cached" in args and "--numstat" in args and "file1.py" in args:
                     return "10\t5\tfile1.py"  # Not binary (shows numbers)
-                elif "git show :file1.py" in cmd:
+                elif "show" in args and ":file1.py" in args:
                     return 'print("hello")'
-                elif "git diff --cached --numstat -- file2.md" in cmd:
+                elif "diff" in args and "--cached" in args and "--numstat" in args and "file2.md" in args:
                     return "3\t1\tfile2.md"  # Not binary
-                elif "git show :file2.md" in cmd:
+                elif "show" in args and ":file2.md" in args:
                     return "# Header\nContent"
                 return ""
 
@@ -35,7 +35,7 @@ class TestStagedFiles:
 
     def test_get_staged_files_empty(self):
         """Test when no files are staged."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.return_value = ""
 
             result = git_commitai.get_staged_files()
@@ -43,18 +43,18 @@ class TestStagedFiles:
 
     def test_get_staged_files_with_binary(self):
         """Test retrieving staged files including binary files."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
 
-            def side_effect(cmd, check=True):
-                if "git diff --cached --name-only" in cmd:
+            def side_effect(args, check=True):
+                if "diff" in args and "--cached" in args and "--name-only" in args:
                     return "file1.py\nlogo.webp"
-                elif "git diff --cached --numstat -- file1.py" in cmd:
+                elif "diff" in args and "--cached" in args and "--numstat" in args and "file1.py" in args:
                     return "10\t5\tfile1.py"  # Text file
-                elif "git show :file1.py" in cmd:
+                elif "show" in args and ":file1.py" in args:
                     return 'print("hello")'
-                elif "git diff --cached --numstat -- logo.webp" in cmd:
+                elif "diff" in args and "--cached" in args and "--numstat" in args and "logo.webp" in args:
                     return "-\t-\tlogo.webp"  # Binary file (shows dashes)
-                elif "git cat-file -s :logo.webp" in cmd:
+                elif "cat-file" in args and "-s" in args and ":logo.webp" in args:
                     return "45678"  # File size in bytes
                 return ""
 
@@ -72,24 +72,24 @@ class TestStagedFiles:
 
     def test_get_staged_files_amend(self):
         """Test retrieving files for --amend."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
 
-            def side_effect(cmd, check=True):
-                if "git diff-tree --no-commit-id --name-only -r HEAD" in cmd:
+            def side_effect(args, check=True):
+                if "diff-tree" in args and "--no-commit-id" in args and "--name-only" in args:
                     return "file1.py\nfile2.md"
-                elif "git diff --cached --name-only" in cmd:
+                elif "diff" in args and "--cached" in args and "--name-only" in args:
                     return "file3.js"
-                elif "git diff --cached --numstat -- file1.py" in cmd:
+                elif "diff" in args and "--cached" in args and "--numstat" in args and "file1.py" in args:
                     return "10\t5\tfile1.py"
-                elif "git show :file1.py" in cmd:
+                elif "show" in args and ":file1.py" in args:
                     return 'print("hello")'
-                elif "git diff --cached --numstat -- file2.md" in cmd:
+                elif "diff" in args and "--cached" in args and "--numstat" in args and "file2.md" in args:
                     return "3\t1\tfile2.md"
-                elif "git show :file2.md" in cmd:
+                elif "show" in args and ":file2.md" in args:
                     return "# Header"
-                elif "git diff --cached --numstat -- file3.js" in cmd:
+                elif "diff" in args and "--cached" in args and "--numstat" in args and "file3.js" in args:
                     return "1\t1\tfile3.js"
-                elif "git show :file3.js" in cmd:
+                elif "show" in args and ":file3.js" in args:
                     return 'console.log("test")'
                 return ""
 
@@ -111,14 +111,14 @@ class TestStagedFiles:
         ]
 
         for filename, numstat_output, expected_description in test_cases:
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
 
-                def side_effect(cmd, check=True):
-                    if "git diff --cached --name-only" in cmd:
+                def side_effect(args, check=True):
+                    if "diff" in args and "--cached" in args and "--name-only" in args:
                         return filename
-                    elif f"git diff --cached --numstat -- {filename}" in cmd:
+                    elif "diff" in args and "--cached" in args and "--numstat" in args and filename in args:
                         return numstat_output
-                    elif f"git cat-file -s :{filename}" in cmd:
+                    elif "cat-file" in args and "-s" in args and f":{filename}" in args:
                         return "1024"  # 1KB
                     return ""
 

@@ -12,7 +12,7 @@ class TestGitStatus:
 
     def test_parse_porcelain_modified_files(self):
         """Test parsing modified files from git status --porcelain."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             # Setup mock returns
             mock_run.side_effect = [
                 "main",  # git branch --show-current
@@ -33,7 +33,7 @@ class TestGitStatus:
 
     def test_parse_porcelain_staged_and_modified(self):
         """Test parsing files that are staged with additional modifications."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.side_effect = [
                 "main",
                 "",
@@ -53,7 +53,7 @@ class TestGitStatus:
 
     def test_parse_porcelain_deleted_files(self):
         """Test parsing deleted files."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.side_effect = ["main", "", " D deleted.txt\nD  staged_delete.txt"]
 
             with patch("sys.stdout", new=StringIO()) as fake_out:
@@ -65,7 +65,7 @@ class TestGitStatus:
 
     def test_clean_working_tree(self):
         """Test output when working tree is clean."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.side_effect = [
                 "main",
                 "",
@@ -80,16 +80,16 @@ class TestGitStatus:
 
     def test_initial_commit(self):
         """Test output for initial commit."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
 
-            def side_effect(cmd, check=True):
-                if "branch --show-current" in cmd:
+            def side_effect(args, check=True):
+                if "branch" in args and "--show-current" in args:
                     return "main"
-                elif "rev-parse HEAD" in cmd:
+                elif "rev-parse" in args and "HEAD" in args:
                     if check:
-                        raise subprocess.CalledProcessError(1, cmd)
+                        raise subprocess.CalledProcessError(1, args)
                     return ""
-                elif "status --porcelain" in cmd:
+                elif "status" in args and "--porcelain" in args:
                     return "?? README.md"
                 return ""
 
@@ -97,6 +97,9 @@ class TestGitStatus:
 
             with patch("sys.stdout", new=StringIO()) as fake_out:
                 git_commitai.show_git_status()
+                output = fake_out.getvalue()
+
+                assert "Initial commit" in output
 
 
 class TestCheckStagedChanges:
@@ -119,15 +122,15 @@ class TestCheckStagedChanges:
 
     def test_amend_with_previous_commit(self):
         """Test --amend with a previous commit."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.return_value = "abc123"  # Successful HEAD lookup
 
             assert git_commitai.check_staged_changes(amend=True)
 
     def test_amend_without_previous_commit(self):
         """Test --amend on initial commit."""
-        with patch("git_commitai.run_command") as mock_run:
-            mock_run.side_effect = subprocess.CalledProcessError(1, "git rev-parse HEAD")
+        with patch("git_commitai.run_git") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(1, ["rev-parse", "HEAD"])
 
             with patch("sys.stdout", new=StringIO()) as fake_out:
                 result = git_commitai.check_staged_changes(amend=True)

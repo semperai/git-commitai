@@ -24,14 +24,14 @@ class TestGitEditor:
     def test_git_config_editor(self):
         """Test git config core.editor."""
         with patch.dict(os.environ, {}, clear=True):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = "emacs"
                 assert git_commitai.get_git_editor() == "emacs"
 
     def test_default_editor(self):
         """Test default editor fallback."""
         with patch.dict(os.environ, {}, clear=True):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = ""
                 assert git_commitai.get_git_editor() == "vi"
 
@@ -41,19 +41,19 @@ class TestGitUtilities:
 
     def test_get_current_branch(self):
         """Test getting current branch name."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.return_value = "main"
             assert git_commitai.get_current_branch() == "main"
 
     def test_get_current_branch_detached(self):
         """Test getting branch name in detached HEAD state."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.side_effect = ["", "abc123"]  # Empty branch name, then short SHA
             assert git_commitai.get_current_branch() == "abc123"
 
     def test_get_git_dir(self):
         """Test getting git directory path."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.return_value = "/path/to/.git"
             assert git_commitai.get_git_dir() == "/path/to/.git"
 
@@ -79,7 +79,7 @@ class TestBinaryFileInfo:
 
     def test_get_binary_file_info_with_extension(self):
         """Test getting info for binary file with known extension."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.return_value = "1024"  # File size
 
             with patch("os.path.splitext", return_value=("image", ".png")):
@@ -91,7 +91,7 @@ class TestBinaryFileInfo:
 
     def test_get_binary_file_info_unknown_extension(self):
         """Test getting info for binary file with unknown extension."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.return_value = ""  # No size info
 
             with patch("os.path.splitext", return_value=("file", ".xyz")):
@@ -101,14 +101,14 @@ class TestBinaryFileInfo:
 
     def test_get_binary_file_info_new_vs_modified(self):
         """Test detecting new vs modified binary files."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             # Test new file
-            def side_effect_new(cmd, check=True):
-                if "cat-file -s" in cmd:
+            def side_effect_new(args, check=True):
+                if "cat-file" in args and "-s" in args:
                     return "1024"
-                elif "cat-file -e HEAD:" in cmd:
+                elif "cat-file" in args and "-e" in args and "HEAD:" in str(args):
                     if check:
-                        raise subprocess.CalledProcessError(1, cmd)
+                        raise subprocess.CalledProcessError(1, args)
                 return ""
 
             mock_run.side_effect = side_effect_new

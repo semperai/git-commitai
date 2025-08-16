@@ -27,7 +27,7 @@ class TestAllowEmptyFlag:
 
     def test_get_staged_files_with_allow_empty(self):
         """Test get_staged_files returns appropriate message for empty commits."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             # No staged files
             mock_run.return_value = ""
 
@@ -41,13 +41,13 @@ class TestAllowEmptyFlag:
 
     def test_get_staged_files_with_allow_empty_and_files(self):
         """Test get_staged_files with allow_empty when there are actually files."""
-        with patch("git_commitai.run_command") as mock_run:
-            def side_effect(cmd, check=True):
-                if "git diff --cached --name-only" in cmd:
+        with patch("git_commitai.run_git") as mock_run:
+            def side_effect(args, check=True):
+                if "diff" in args and "--cached" in args and "--name-only" in args:
                     return "file1.py"
-                elif "git diff --cached --numstat -- file1.py" in cmd:
+                elif "diff" in args and "--cached" in args and "--numstat" in args and "file1.py" in args:
                     return "10\t5\tfile1.py"  # Not binary
-                elif "git show :file1.py" in cmd:
+                elif "show" in args and ":file1.py" in args:
                     return 'print("hello")'
                 return ""
 
@@ -61,7 +61,7 @@ class TestAllowEmptyFlag:
 
     def test_get_git_diff_with_allow_empty(self):
         """Test get_git_diff returns appropriate message for empty commits."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             # No diff
             mock_run.return_value = ""
 
@@ -75,7 +75,7 @@ class TestAllowEmptyFlag:
 
     def test_get_git_diff_with_allow_empty_and_changes(self):
         """Test get_git_diff with allow_empty when there are actually changes."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.return_value = "diff --git a/file.txt b/file.txt\n+new line"
 
             # Even with allow_empty, if there are changes, show them
@@ -87,7 +87,7 @@ class TestAllowEmptyFlag:
     def test_create_commit_message_file_with_allow_empty(self):
         """Test that commit message file notes empty commit."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = ""  # No staged files
 
                 with tempfile.TemporaryDirectory() as tmpdir:
@@ -111,7 +111,7 @@ class TestAllowEmptyFlag:
     def test_create_commit_message_file_verbose_with_allow_empty(self):
         """Test verbose mode with empty commit."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = ""  # No diff
 
                 with tempfile.TemporaryDirectory() as tmpdir:
