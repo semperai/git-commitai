@@ -128,6 +128,9 @@ git commitai -m "Refactored auth system for JWT"
 # Auto-stage tracked files
 git commitai -a
 
+# Debug mode for troubleshooting
+git commitai --debug
+
 # See all options
 git commitai --help
 ```
@@ -139,9 +142,18 @@ git commitai --help
 man git-commitai
 ```
 
-### Git Commit Commands Support
+### Git Commit AI Specific Commands
 
-The following table shows all `git commit` flags and their current support status in `git commitai`:
+These commands are unique to `git commitai` and not found in standard `git commit`:
+
+| Flag | Description | Purpose |
+|------|-------------|---------|
+| `-m, --message <context>` | Provide context for AI | **Modified behavior**: Unlike `git commit` where this sets the entire message, in `git commitai` this provides context to help the AI understand your intent |
+| `--debug` | Enable debug logging | Logs all operations to `~/.gitcommitai.debug.log` for troubleshooting. Shows git commands, API requests, and decision points |
+
+### Standard Git Commit Commands Support
+
+The following table shows all standard `git commit` flags and their support status in `git commitai`:
 
 | Flag | Description | Status |
 |------|-------------|--------|
@@ -158,7 +170,6 @@ The following table shows all `git commit` flags and their current support statu
 | `--squash=<commit>` | Construct commit for squashing | ❌ Not supported |
 | `--fixup=<commit>` | Construct commit for autosquash rebase | ❌ Not supported |
 | `-F, --file=<file>` | Read commit message from file | ❌ Not supported |
-| `-m, --message=<msg>` | Provide context message for AI | ✅ **Supported** (modified behavior) |
 | `--reset-author` | Reset author information | ❌ Not supported |
 | `--allow-empty` | Allow empty commits | ✅ **Supported** |
 | `--allow-empty-message` | Allow commits with empty message | ❌ Not supported |
@@ -183,9 +194,6 @@ The following table shows all `git commit` flags and their current support statu
 - ✅ **Supported** - Fully functional in git-commitai
 - ❌ Not supported - Not yet implemented
 
-#### Note on `-m` flag
-In standard `git commit`, the `-m` flag provides the entire commit message. In `git commitai`, this flag provides context to the AI to help generate a better commit message based on your changes.
-
 ### Supported Providers
 
 - **OpenRouter** (Recommended) - Access to Claude, GPT-4, and many models
@@ -202,6 +210,7 @@ In standard `git commit`, the `-m` flag provides the entire commit message. In `
 - 📖 **Full documentation** - Comprehensive man page with `git commitai --help`
 - ⚡ **Smart context** - Understands both diffs and full file contents
 - 🎯 **Git native** - Respects your git editor, hooks, and workflow
+- 🐛 **Debug mode** - Built-in debugging for troubleshooting issues
 
 ## 🧪 Examples
 
@@ -225,7 +234,42 @@ git commitai --allow-empty -m "Trigger deployment"
 
 # Review changes while committing
 git commitai -v
+
+# Debug mode for troubleshooting
+git commitai --debug
+git commitai --debug -a -m "Testing auto-stage"
+
+# Check debug log
+cat ~/.gitcommitai.debug.log
+tail -f ~/.gitcommitai.debug.log  # Watch in real-time
 ```
+
+## 🐛 Debugging
+
+If you encounter issues, use the `--debug` flag to enable detailed logging:
+
+```bash
+# Enable debug mode
+git commitai --debug
+
+# Debug with other flags
+git commitai --debug -a -v
+
+# View the debug log
+cat ~/.gitcommitai.debug.log
+
+# Watch log in real-time
+tail -f ~/.gitcommitai.debug.log
+```
+
+The debug log includes:
+- All git commands executed
+- API request/response details
+- File processing information
+- Configuration and environment details
+- Error messages and stack traces
+
+When reporting bugs, please include relevant portions of the debug log.
 
 ## 🤝 Contributing
 

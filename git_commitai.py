@@ -6,8 +6,19 @@ import json
 import subprocess
 import shlex
 import argparse
+from datetime import datetime
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+
+
+# Global debug flag
+DEBUG = False
+
+
+def debug_log(message):
+    """Log debug messages if debug mode is enabled."""
+    if DEBUG:
+        print(f"DEBUG: {message}", file=sys.stderr)
 
 
 def show_man_page():
@@ -29,6 +40,8 @@ def show_man_page():
 
 def get_env_config():
     """Get configuration from environment variables."""
+    debug_log("Loading environment configuration")
+
     config = {
         "api_key": os.environ.get("GIT_COMMIT_AI_KEY"),
         "api_url": os.environ.get(
@@ -36,6 +49,8 @@ def get_env_config():
         ),
         "model": os.environ.get("GIT_COMMIT_AI_MODEL", "qwen/qwen3-coder"),
     }
+
+    debug_log(f"Config loaded - URL: {config['api_url']}, Model: {config['model']}, Key present: {bool(config['api_key'])}")
 
     if not config["api_key"]:
         print("Error: GIT_COMMIT_AI_KEY environment variable is not set")
@@ -55,6 +70,8 @@ def get_env_config():
 
 def run_git(args, check=True):
     """Run git with a list of args safely (no shell). Returns stdout text."""
+    debug_log(f"Running git command: git {' '.join(args)}")
+
     try:
         result = subprocess.run(
             ["git"] + args,
@@ -62,8 +79,10 @@ def run_git(args, check=True):
             text=True,
             check=check
         )
+        debug_log(f"Git command successful, output length: {len(result.stdout)} chars")
         return result.stdout
     except subprocess.CalledProcessError as e:
+        debug_log(f"Git command failed with code {e.returncode}: {e.stderr}")
         if check:
             raise
         return e.stdout if e.stdout else ""
@@ -71,27 +90,36 @@ def run_git(args, check=True):
 
 def stage_all_tracked_files():
     """Stage all tracked, modified files (equivalent to git add -u)."""
+    debug_log("Staging all tracked files with 'git add -u'")
+
     try:
         # git add -u stages all tracked files that have been modified or deleted
         # but does NOT add untracked files
         subprocess.run(["git", "add", "-u"], check=True, capture_output=True)
+        debug_log("Successfully staged tracked files")
         return True
     except subprocess.CalledProcessError as e:
+        debug_log(f"Failed to stage tracked files: {e}")
         print(f"Error: Failed to stage tracked files: {e}")
         return False
 
 
 def check_staged_changes(amend=False, auto_stage=False, allow_empty=False):
     """Check if there are staged changes and provide git-like output if not."""
+    debug_log(f"Checking staged changes - amend: {amend}, auto_stage: {auto_stage}, allow_empty: {allow_empty}")
+
     if auto_stage and not amend:
         # First, check if there are any changes to stage
         try:
             # Check for modified tracked files
             result = subprocess.run(["git", "diff", "--quiet"], capture_output=True)
             if result.returncode != 0:
+                debug_log("Found unstaged changes, auto-staging them")
                 # There are unstaged changes in tracked files, stage them
                 if not stage_all_tracked_files():
                     return False
+            else:
+                debug_log("No unstaged changes to auto-stage")
             # Continue to check if we now have staged changes
         except subprocess.CalledProcessError:
             pass
@@ -101,13 +129,16 @@ def check_staged_changes(amend=False, auto_stage=False, allow_empty=False):
         # But we should check if there's a previous commit to amend
         try:
             run_git(["rev-parse", "HEAD"], check=True)
+            debug_log("Found previous commit to amend")
             return True
         except:
+            debug_log("No previous commit to amend")
             print("fatal: You have nothing to amend.")
             return False
 
     # If --allow-empty is set, we can proceed even without staged changes
     if allow_empty:
+        debug_log("Allow empty flag set, proceeding without staged changes")
         return True
 
     try:
@@ -115,9 +146,11 @@ def check_staged_changes(amend=False, auto_stage=False, allow_empty=False):
             ["git", "diff", "--cached", "--quiet"], capture_output=True
         )
         if result.returncode == 0:
+            debug_log("No staged changes found")
             # No staged changes - mimic git commit output
             show_git_status()
             return False
+        debug_log("Found staged changes")
         return True
     except subprocess.CalledProcessError:
         return False
@@ -125,6 +158,8 @@ def check_staged_changes(amend=False, auto_stage=False, allow_empty=False):
 
 def show_git_status():
     """Show git status output similar to what 'git commit' shows."""
+    debug_log("Showing git status")
+
     # Get branch name
     try:
         branch = run_git(["branch", "--show-current"]).strip()
@@ -216,12 +251,15 @@ def show_git_status():
                     'no changes added to commit (use "git add" and/or "git commit -a")'
                 )
     except Exception as e:
+        debug_log(f"Error showing git status: {e}")
         # Fallback to simple message if something goes wrong
         print("No changes staged for commit")
 
 
 def get_binary_file_info(filename, amend=False):
     """Get information about a binary file."""
+    debug_log(f"Getting binary file info for: {filename}")
+
     info_parts = []
 
     # Get file extension
@@ -307,6 +345,8 @@ def get_binary_file_info(filename, amend=False):
 
 def get_staged_files(amend=False, allow_empty=False):
     """Get list of staged files with their staged contents."""
+    debug_log(f"Getting staged files - amend: {amend}, allow_empty: {allow_empty}")
+
     if amend:
         # For --amend, get files from the last commit plus any newly staged files
         # First, get files from the last commit
@@ -326,6 +366,8 @@ def get_staged_files(amend=False, allow_empty=False):
         files_output = "\n".join(sorted(all_filenames))
     else:
         files_output = run_git(["diff", "--cached", "--name-only"]).strip()
+
+    debug_log(f"Found {len(files_output.split()) if files_output else 0} staged files")
 
     if not files_output:
         if allow_empty:
@@ -381,7 +423,8 @@ def get_staged_files(amend=False, allow_empty=False):
                         staged_content or staged_content == ""
                     ):  # Include empty files too
                         all_files.append(f"{filename}\n```\n{staged_content}\n```\n")
-            except Exception:
+            except Exception as e:
+                debug_log(f"Error processing file {filename}: {e}")
                 # File might be newly added or have other issues, skip it
                 continue
 
@@ -390,6 +433,8 @@ def get_staged_files(amend=False, allow_empty=False):
 
 def get_git_diff(amend=False, allow_empty=False):
     """Get the git diff of staged changes, with binary file handling."""
+    debug_log(f"Getting git diff - amend: {amend}, allow_empty: {allow_empty}")
+
     if amend:
         # For --amend, show the diff of the last commit plus any new staged changes
         # Get the parent of HEAD (or use empty tree if it's the first commit)
@@ -410,6 +455,8 @@ def get_git_diff(amend=False, allow_empty=False):
             diff = run_git(["diff", "--cached"]).strip()
     else:
         diff = run_git(["diff", "--cached"]).strip()
+
+    debug_log(f"Diff size: {len(diff)} characters")
 
     if not diff and allow_empty:
         return "```\n# No changes (empty commit)\n```"
@@ -492,6 +539,9 @@ def get_git_dir():
 
 def make_api_request(config, message):
     """Make API request to generate commit message."""
+    debug_log(f"Making API request to {config['api_url']} with model {config['model']}")
+    debug_log(f"Prompt length: {len(message)} characters")
+
     payload = {
         "model": config["model"],
         "messages": [{"role": "user", "content": message}],
@@ -509,11 +559,15 @@ def make_api_request(config, message):
     try:
         with urlopen(req) as response:
             data = json.loads(response.read().decode("utf-8"))
-            return data["choices"][0]["message"]["content"]
+            result = data["choices"][0]["message"]["content"]
+            debug_log(f"API request successful, response length: {len(result)} characters")
+            return result
     except (URLError, HTTPError) as e:
+        debug_log(f"API request failed: {e}")
         print(f"Error: Failed to make API request: {e}")
         sys.exit(1)
     except (KeyError, IndexError, json.JSONDecodeError) as e:
+        debug_log(f"Failed to parse API response: {e}")
         print(f"Error: Failed to parse API response: {e}")
         sys.exit(1)
 
@@ -528,6 +582,8 @@ def create_commit_message_file(
     allow_empty=False,
 ):
     """Create the commit message file with git template."""
+    debug_log(f"Creating commit message file in {git_dir}")
+
     commit_file = os.path.join(git_dir, "COMMIT_EDITMSG")
 
     with open(commit_file, "w") as f:
@@ -619,23 +675,30 @@ def create_commit_message_file(
             elif allow_empty:
                 f.write("# No changes (empty commit)\n")
 
+    debug_log(f"Commit message file created: {commit_file}")
     return commit_file
 
 
 def open_editor(filepath, editor):
     """Open file in editor and wait for it to close."""
+    debug_log(f"Opening editor: {editor} {filepath}")
+
     try:
         # Use POSIX splitting except on Windows for better compatibility
         cmd = shlex.split(editor, posix=(os.name != "nt")) + [filepath]
 
         subprocess.run(cmd)
-    except Exception:
+        debug_log("Editor closed")
+    except Exception as e:
+        debug_log(f"Failed to open editor: {e}")
         print(f"Error: Failed to open editor: {editor}")
         sys.exit(1)
 
 
 def is_commit_message_empty(filepath):
     """Check if commit message is empty (ignoring comments)."""
+    debug_log(f"Checking if commit message is empty: {filepath}")
+
     try:
         with open(filepath, "r") as f:
             for line in f:
@@ -647,14 +710,19 @@ def is_commit_message_empty(filepath):
                 # Check if this line is a comment (accounting for leading whitespace)
                 if not line.lstrip().startswith("#"):
                     # Found actual content (non-comment, non-empty line)
+                    debug_log("Commit message has content")
                     return False
+        debug_log("Commit message is empty")
         return True
     except (IOError, OSError) as e:
+        debug_log(f"Error reading commit message file: {e}")
         # More specific exception handling to avoid bare except
         return True
 
 
 def main():
+    global DEBUG
+
     # Check for --help flag early and show man page if available
     if "--help" in sys.argv or "-h" in sys.argv:
         if not show_man_page():
@@ -673,6 +741,7 @@ Examples:
   git-commitai -a                 # Auto-stage all tracked files and commit
   git-commitai --amend            # Amend the previous commit with new message
   git-commitai --allow-empty      # Create an empty commit
+  git-commitai --debug            # Enable debug logging
 
 Quick Install:
   curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install.sh | bash
@@ -713,19 +782,38 @@ For more information, visit: https://github.com/semperai/git-commitai
         action="store_true",
         help="Allow creating an empty commit",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging to ~/.gitcommitai.debug.log",
+    )
     args = parser.parse_args()
+
+    # Enable debug mode if flag is set
+    if args.debug:
+        DEBUG = True
+        debug_log("=" * 60)
+        debug_log("Git Commit AI started with --debug flag")
+        debug_log(f"Python version: {sys.version}")
+        debug_log(f"Arguments: {sys.argv[1:]}")
+
+        # Print debug info to stderr
+        print(f"Debug mode enabled. Logging to: ~/.gitcommitai.debug.log", file=sys.stderr)
 
     # Check if in a git repository first
     try:
         subprocess.run(
             ["git", "rev-parse", "--git-dir"], capture_output=True, check=True
         )
+        debug_log("Git repository detected")
     except subprocess.CalledProcessError:
+        debug_log("Not in a git repository")
         print("fatal: not a git repository (or any of the parent directories): .git")
         sys.exit(128)  # Git's standard exit code for this error
 
     # Check for conflicting flags
     if args.all and args.amend:
+        debug_log("Conflicting flags: -a and --amend")
         print("Error: Cannot use -a/--all with --amend")
         print(
             "The --amend flag modifies the previous commit and doesn't auto-stage new changes."
@@ -802,11 +890,13 @@ Here are all of the files for context:
 
     if mtime_before == mtime_after:
         # File wasn't saved (user did :q! or equivalent)
+        debug_log("Commit aborted - file not saved")
         print("Aborting commit due to empty commit message.")
         sys.exit(1)
 
     # Check if message is empty
     if is_commit_message_empty(commit_file):
+        debug_log("Commit aborted - empty message")
         print("Aborting commit due to empty commit message.")
         sys.exit(1)
 
@@ -825,8 +915,11 @@ Here are all of the files for context:
 
         commit_cmd.extend(["-F", commit_file])
 
+        debug_log(f"Executing commit command: {' '.join(commit_cmd)}")
         subprocess.run(commit_cmd, check=True)
+        debug_log("Commit successful")
     except subprocess.CalledProcessError as e:
+        debug_log(f"Commit failed with code {e.returncode}")
         sys.exit(e.returncode)
 
 
