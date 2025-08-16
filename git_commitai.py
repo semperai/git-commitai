@@ -543,6 +543,66 @@ def get_git_dir():
     return run_git(["rev-parse", "--git-dir"]).strip()
 
 
+def get_git_root():
+    """Get the root directory of the git repository."""
+    try:
+        return run_git(["rev-parse", "--show-toplevel"]).strip()
+    except:
+        return os.getcwd()
+
+
+def read_gitmessage_template():
+    """Read .gitmessage template file if it exists."""
+    debug_log("Checking for .gitmessage template file")
+
+    # Check multiple possible locations in order of precedence
+    possible_paths = []
+
+    # 1. Check git config for commit.template
+    try:
+        configured_template = run_git(["config", "--get", "commit.template"], check=False).strip()
+        if configured_template:
+            # Expand ~ to home directory if present
+            if configured_template.startswith("~"):
+                configured_template = os.path.expanduser(configured_template)
+            # If not absolute path, make it relative to git root
+            elif not os.path.isabs(configured_template):
+                git_root = get_git_root()
+                configured_template = os.path.join(git_root, configured_template)
+            possible_paths.append(configured_template)
+            debug_log(f"Found configured template: {configured_template}")
+    except:
+        pass
+
+    # 2. Check for .gitmessage in repository root
+    try:
+        git_root = get_git_root()
+        repo_gitmessage = os.path.join(git_root, ".gitmessage")
+        possible_paths.append(repo_gitmessage)
+    except:
+        pass
+
+    # 3. Check for global .gitmessage in home directory
+    home_gitmessage = os.path.expanduser("~/.gitmessage")
+    possible_paths.append(home_gitmessage)
+
+    # Try to read from the first existing file
+    for path in possible_paths:
+        if path and os.path.isfile(path):
+            try:
+                with open(path, 'r') as f:
+                    content = f.read()
+                debug_log(f"Successfully read .gitmessage template from: {path}")
+                debug_log(f"Template content length: {len(content)} characters")
+                return content
+            except (IOError, OSError) as e:
+                debug_log(f"Failed to read template from {path}: {e}")
+                continue
+
+    debug_log("No .gitmessage template file found")
+    return None
+
+
 def make_api_request(config, message):
     """Make API request with retry logic."""
     debug_log(f"Making API request to {config['api_url']} with model {config['model']}")
@@ -942,6 +1002,19 @@ CRITICAL RULES YOU MUST FOLLOW:
    - Just the raw commit message text
 
 Remember: Most commits only need a clear subject line. Only add a body when the change is complex or the reasoning isn't obvious from the code."""
+
+    # Add .gitmessage template context if available
+    gitmessage_template = read_gitmessage_template()
+    if gitmessage_template:
+        prompt += f"""
+
+PROJECT-SPECIFIC COMMIT TEMPLATE/GUIDELINES:
+The following template or guidelines are configured for this project. Use this as additional context
+to understand the project's commit message conventions, but still follow the Git best practices above:
+
+{gitmessage_template}
+"""
+        debug_log("Added .gitmessage template to prompt context")
 
     if args.message:
         prompt += f"\n\nAdditional context from user: {args.message}"

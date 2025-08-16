@@ -125,6 +125,49 @@ git commitai --model "gpt-4o" --api-key "sk-..."
 git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "llama2"
 ```
 
+### Commit Message Templates (.gitmessage)
+
+Git Commit AI automatically reads and uses your `.gitmessage` template files to understand your project's commit conventions. This helps generate messages that match your team's style guide.
+
+The tool looks for templates in this order (first found wins):
+1. **Git config template**: Set via `git config commit.template`
+2. **Repository template**: `.gitmessage` in your repository root
+3. **Global template**: `~/.gitmessage` in your home directory
+
+#### Setting Up a Template
+
+Create a `.gitmessage` file with your project's commit guidelines:
+
+```bash
+# Create a repository-specific template
+cat > .gitmessage << 'EOF'
+# Format: <type>(<scope>): <subject>
+#
+# <type> must be one of:
+#   feat: A new feature
+#   fix: A bug fix
+#   docs: Documentation changes
+#   style: Code style changes (formatting, semicolons, etc)
+#   refactor: Code refactoring without adding features or fixing bugs
+#   test: Adding or updating tests
+#   chore: Maintenance tasks, dependency updates, etc
+#
+# <scope> is optional and indicates the module affected
+#
+# Example: feat(auth): Add OAuth2 login support
+#
+# The body should explain the motivation for the change
+EOF
+
+# Or set a global template
+git config --global commit.template ~/.gitmessage
+
+# Or set a repository-specific template
+git config commit.template .github/commit-template
+```
+
+When a template is found, Git Commit AI uses it as additional context to generate messages that follow your conventions while still adhering to Git best practices.
+
 ## 📖 Usage
 
 ```bash
@@ -228,6 +271,7 @@ The following table shows all standard `git commit` flags and their support stat
 - 🎯 **Git native** - Respects your git editor, hooks, and workflow
 - 🐛 **Debug mode** - Built-in debugging for troubleshooting issues
 - 🔄 **CLI overrides** - Override API settings per-command for testing and flexibility
+- 📋 **Template support** - Automatically uses your `.gitmessage` templates for project-specific conventions
 
 ## 🧪 Examples
 
@@ -270,6 +314,25 @@ cat ~/.gitcommitai.debug.log
 tail -f ~/.gitcommitai.debug.log  # Watch in real-time
 ```
 
+### Using with .gitmessage Templates
+
+```bash
+# Create a project-specific template
+cat > .gitmessage << 'EOF'
+# Type: feat|fix|docs|style|refactor|test|chore
+# Scope: (optional) affected module
+#
+# Remember: Use imperative mood in the subject line
+EOF
+
+# Git Commit AI will automatically detect and use this template
+git add .
+git commitai
+
+# The AI will generate messages following your template format
+# Example output: "feat(auth): Add JWT token validation"
+```
+
 ## 🐛 Debugging
 
 If you encounter issues, use the `--debug` flag to enable detailed logging:
@@ -296,6 +359,7 @@ The debug log includes:
 - API request/response details
 - File processing information
 - Configuration and environment details (including CLI overrides)
+- Template file detection and loading
 - Error messages and stack traces
 
 When reporting bugs, please include relevant portions of the debug log.
