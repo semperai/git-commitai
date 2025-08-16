@@ -277,14 +277,10 @@ def build_ai_prompt(repo_config, args, allow_empty=False):
                 if placeholder in base_prompt:
                     base_prompt = base_prompt.replace(placeholder, value)
 
-        # Clean up any empty lines from unused placeholders
-        lines = base_prompt.split('\n')
-        cleaned_lines = []
-        for line in lines:
-            # Remove lines that only had a placeholder that resolved to empty
-            if line.strip() and not (line.strip() in replacements.values() and not replacements.get(line.strip(), True)):
-                cleaned_lines.append(line)
-        base_prompt = '\n'.join(cleaned_lines)
+        # Normalize excessive blank lines introduced by empty replacements
+        while "\n\n\n" in base_prompt:
+            base_prompt = base_prompt.replace("\n\n\n", "\n\n")
+        base_prompt = base_prompt.strip("\n")
 
     else:
         # Use default prompt
