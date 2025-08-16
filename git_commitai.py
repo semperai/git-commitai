@@ -9,6 +9,23 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
 
+def show_man_page():
+    """Try to show the man page, fall back to help text if not available."""
+    try:
+        # Try to use man command to show the man page
+        result = subprocess.run(
+            ["man", "git-commitai"],
+            check=False
+        )
+        if result.returncode == 0:
+            sys.exit(0)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    # If man page is not available, return False to show argparse help
+    return False
+
+
 def get_env_config():
     """Get configuration from environment variables."""
     config = {
@@ -28,6 +45,8 @@ def get_env_config():
             "  export GIT_COMMIT_AI_URL='https://api.openai.com/v1/chat/completions' # or your provider's URL"
         )
         print("  export GIT_COMMIT_AI_MODEL='gpt-4o' # or your preferred model")
+        print()
+        print("For quick setup, run: curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install.sh | bash")
         sys.exit(1)
 
     return config
@@ -632,6 +651,14 @@ def is_commit_message_empty(filepath):
 
 
 def main():
+    # Check for --help flag early and show man page if available
+    if "--help" in sys.argv or "-h" in sys.argv:
+        if not show_man_page():
+            # Man page not available, continue with argparse help
+            pass
+        else:
+            sys.exit(0)
+
     parser = argparse.ArgumentParser(
         description="Generate AI-powered git commit messages",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -640,19 +667,18 @@ Examples:
   git-commitai                    # Generate commit message for staged changes
   git-commitai -m "context"       # Add context about the changes
   git-commitai -a                 # Auto-stage all tracked files and commit
-  git-commitai -a -m "refactor"   # Auto-stage with context
   git-commitai --amend            # Amend the previous commit with new message
-  git-commitai --amend -m "fix"   # Amend with context
-  git-commitai -n                 # Skip git hooks (pre-commit, commit-msg)
-  git-commitai -v                 # Show diff in editor below commit message
-  git-commitai -a -n -v           # Combine multiple flags
   git-commitai --allow-empty      # Create an empty commit
+
+Quick Install:
+  curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install.sh | bash
 
 Environment variables:
   GIT_COMMIT_AI_KEY     Your API key (required)
   GIT_COMMIT_AI_URL     API endpoint URL (default: OpenAI)
   GIT_COMMIT_AI_MODEL   Model to use (default: gpt-4o)
 
+For full documentation, run: man git-commitai
 For more information, visit: https://github.com/semperai/git-commitai
         """,
     )
