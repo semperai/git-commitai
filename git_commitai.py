@@ -713,8 +713,7 @@ def get_staged_files(amend=False, allow_empty=False):
                         ).strip()
 
                     # Redact any secrets in file content before including in debug logs
-                    if DEBUG:
-                        debug_log(f"Processing file {filename} with content length: {len(staged_content)}")
+                    debug_log(f"Processing file {filename} with content length: {len(staged_content)}")
 
                     if (
                         staged_content or staged_content == ""
