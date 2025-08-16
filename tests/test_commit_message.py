@@ -18,7 +18,7 @@ class TestCommitMessageEmpty:
 # On branch main
         """
         with patch("builtins.open", mock_open(read_data=content)):
-            assert git_commitai.is_commit_message_empty("fake_path") == True
+            assert git_commitai.is_commit_message_empty("fake_path")
 
     def test_non_empty_message(self):
         """Test detecting non-empty commit message."""
@@ -29,7 +29,7 @@ This fixes the issue where users couldn't log in.
 # Please enter the commit message for your changes.
         """
         with patch("builtins.open", mock_open(read_data=content)):
-            assert git_commitai.is_commit_message_empty("fake_path") == False
+            assert not git_commitai.is_commit_message_empty("fake_path")
 
     def test_comments_with_leading_whitespace(self):
         """Test that comments with leading whitespace are properly ignored."""
@@ -42,7 +42,7 @@ This fixes the issue where users couldn't log in.
 # All above lines should be ignored
         """
         with patch("builtins.open", mock_open(read_data=content)):
-            assert git_commitai.is_commit_message_empty("fake_path") == True
+            assert git_commitai.is_commit_message_empty("fake_path")
 
     def test_mixed_content_and_comments(self):
         """Test message with both content and comments."""
@@ -56,7 +56,7 @@ This adds the new authentication feature.
 # Lines starting with '#' will be ignored.
         """
         with patch("builtins.open", mock_open(read_data=content)):
-            assert git_commitai.is_commit_message_empty("fake_path") == False
+            assert not git_commitai.is_commit_message_empty("fake_path")
 
     def test_only_whitespace_lines(self):
         """Test that lines with only whitespace are considered empty."""
@@ -67,7 +67,7 @@ This adds the new authentication feature.
 # Comment line
         """
         with patch("builtins.open", mock_open(read_data=content)):
-            assert git_commitai.is_commit_message_empty("fake_path") == True
+            assert git_commitai.is_commit_message_empty("fake_path")
 
     def test_hash_in_content_not_comment(self):
         """Test that # in the middle of content is not treated as comment."""
@@ -78,7 +78,7 @@ This fixes bug #123 in the authentication system.
 # This is an actual comment
         """
         with patch("builtins.open", mock_open(read_data=content)):
-            assert git_commitai.is_commit_message_empty("fake_path") == False
+            assert not git_commitai.is_commit_message_empty("fake_path")
 
     def test_indented_content_preserved(self):
         """Test that indented content (not comments) is preserved."""
@@ -90,24 +90,24 @@ This fixes bug #123 in the authentication system.
 # Comment line
         """
         with patch("builtins.open", mock_open(read_data=content)):
-            assert git_commitai.is_commit_message_empty("fake_path") == False
+            assert not git_commitai.is_commit_message_empty("fake_path")
 
     def test_empty_file(self):
         """Test completely empty file."""
         content = ""
         with patch("builtins.open", mock_open(read_data=content)):
-            assert git_commitai.is_commit_message_empty("fake_path") == True
+            assert git_commitai.is_commit_message_empty("fake_path")
 
     def test_file_read_error(self):
         """Test handling of file read errors."""
         with patch("builtins.open", side_effect=IOError("File not found")):
-            assert git_commitai.is_commit_message_empty("fake_path") == True
+            assert git_commitai.is_commit_message_empty("fake_path")
 
     def test_single_non_comment_line(self):
         """Test file with just one non-comment line."""
         content = "Initial commit"
         with patch("builtins.open", mock_open(read_data=content)):
-            assert git_commitai.is_commit_message_empty("fake_path") == False
+            assert not git_commitai.is_commit_message_empty("fake_path")
 
     def test_comment_like_but_not_at_start(self):
         """Test that lines not starting with # (after stripping leading whitespace) are not comments."""
@@ -118,7 +118,7 @@ This updates the README file # adding more details
 # This is a real comment
         """
         with patch("builtins.open", mock_open(read_data=content)):
-            assert git_commitai.is_commit_message_empty("fake_path") == False
+            assert not git_commitai.is_commit_message_empty("fake_path")
 
 
 class TestCommitMessageFileCreation:

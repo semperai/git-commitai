@@ -1,7 +1,6 @@
 """Tests for main flow and integration."""
 
 import pytest
-import os
 import subprocess
 from unittest.mock import patch, MagicMock
 from io import StringIO
@@ -21,6 +20,14 @@ class TestMainFlow:
                 with pytest.raises(SystemExit) as exc_info:
                     with patch("sys.argv", ["git-commitai"]):
                         git_commitai.main()
+
+                        # Ensure git commit was invoked
+                        calls = [c.args[0] for c in mock_run.call_args_list if c.args]
+                        assert any(
+                            isinstance(cmd, list) and "commit" in cmd
+                            for cmd in calls
+                        )
+
 
                 assert exc_info.value.code == 128
                 assert "fatal: not a git repository" in fake_out.getvalue()

@@ -1,6 +1,7 @@
 """Tests for utility functions."""
 
 import pytest
+import subprocess
 import os
 from unittest.mock import patch
 import git_commitai

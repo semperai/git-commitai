@@ -14,7 +14,6 @@ git\-commitai \- Generate intelligent git commit messages using AI
 [\fI\-\-amend\fR]
 [\fI\-\-allow\-empty\fR]
 [\fI\-\-help\fR]
-[\fI\-\-version\fR]
 
 .SH DESCRIPTION
 .B git\-commitai
@@ -49,10 +48,6 @@ Replace the most recent commit with a new one. Generates a new AI message based 
 .TP
 .B \-\-allow\-empty
 Create a commit even when there are no staged changes. Useful for creating marker commits, triggering CI/CD pipelines, or documenting milestones. The AI will generate an appropriate message explaining the empty commit.
-
-.TP
-.B \-\-version
-Display version information and exit.
 
 .TP
 .BR \-h ", " \-\-help

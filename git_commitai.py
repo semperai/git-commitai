@@ -31,9 +31,9 @@ def get_env_config():
     config = {
         "api_key": os.environ.get("GIT_COMMIT_AI_KEY"),
         "api_url": os.environ.get(
-            "GIT_COMMIT_AI_URL", "https://api.openai.com/v1/chat/completions"
+            "GIT_COMMIT_AI_URL", "https://openrouter.ai/api/v1/chat/completions"
         ),
-        "model": os.environ.get("GIT_COMMIT_AI_MODEL", "gpt-4o"),
+        "model": os.environ.get("GIT_COMMIT_AI_MODEL", "qwen/qwen3-coder"),
     }
 
     if not config["api_key"]:
@@ -42,9 +42,9 @@ def get_env_config():
         print("Please set up your API credentials:")
         print("  export GIT_COMMIT_AI_KEY='your-api-key'")
         print(
-            "  export GIT_COMMIT_AI_URL='https://api.openai.com/v1/chat/completions' # or your provider's URL"
+            "  export GIT_COMMIT_AI_URL='https://openrouter.ai/api/v1/chat/completions' # or your provider's URL"
         )
-        print("  export GIT_COMMIT_AI_MODEL='gpt-4o' # or your preferred model")
+        print("  export GIT_COMMIT_AI_MODEL='qwen/qwen3-coder' # or your preferred model")
         print()
         print("For quick setup, run: curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install.sh | bash")
         sys.exit(1)
@@ -709,7 +709,6 @@ For more information, visit: https://github.com/semperai/git-commitai
         action="store_true",
         help="Allow creating an empty commit",
     )
-    parser.add_argument("--version", action="version", version="git-commitai 1.0.5")
     args = parser.parse_args()
 
     # Check if in a git repository first

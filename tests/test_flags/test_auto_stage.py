@@ -19,7 +19,7 @@ class TestAutoStageFlag:
 
             result = git_commitai.stage_all_tracked_files()
 
-            assert result == True
+            assert result
             mock_run.assert_called_once_with(
                 ["git", "add", "-u"], check=True, capture_output=True
             )
@@ -56,7 +56,7 @@ class TestAutoStageFlag:
 
             result = git_commitai.check_staged_changes(auto_stage=True)
 
-            assert result == True
+            assert result
             assert mock_run.call_count == 3
 
     def test_check_staged_changes_auto_stage_no_changes(self):
@@ -74,7 +74,7 @@ class TestAutoStageFlag:
 
             result = git_commitai.check_staged_changes(auto_stage=True)
 
-            assert result == True
+            assert result
             # git add -u should not be called since there are no unstaged changes
 
     def test_auto_stage_with_amend_conflicts(self):
@@ -142,7 +142,7 @@ class TestAutoStageFlag:
                                                 # Verify create_commit_message_file was called with auto_staged=True
                                                 mock_create.assert_called_once()
                                                 call_args = mock_create.call_args
-                                                assert call_args[1]["auto_staged"] == True
+                                                assert call_args[1]["auto_staged"]
 
     def test_prompt_includes_auto_stage_note(self):
         """Test that the AI prompt mentions auto-staging when -a is used."""

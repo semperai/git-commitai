@@ -3,12 +3,10 @@
 import pytest
 import os
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Add parent directory to path so we can import git_commitai
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import git_commitai
 
 
 @pytest.fixture
@@ -41,10 +39,10 @@ def mock_staged_changes():
 @pytest.fixture
 def mock_editor_flow():
     """Fixture for mocking the editor flow."""
-    with patch("os.path.getmtime", side_effect=[1000, 2000]):
-        with patch("git_commitai.open_editor"):
-            with patch("git_commitai.is_commit_message_empty", return_value=False):
-                yield
+    with patch("os.path.getmtime", side_effect=[1000, 2000]), \
+         patch("git_commitai.open_editor"), \
+         patch("git_commitai.is_commit_message_empty", return_value=False):
+        yield
 
 
 @pytest.fixture

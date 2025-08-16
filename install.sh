@@ -15,13 +15,15 @@ NC='\033[0m' # No Color
 # Default installation directory
 INSTALL_DIR="/usr/local/bin"
 MAN_DIR="/usr/local/share/man/man1"
-REPO_URL="https://raw.githubusercontent.com/semperai/git-commitai/refs/heads/master"
+REPO_URL="https://raw.githubusercontent.com/semperai/git-commitai/master"
+
 
 # Function to print colored output
 print_color() {
-    color=$1
+    local color="$1"
     shift
-    echo -e "${color}$@${NC}"
+    # Join remaining args; preserve spaces; add newline
+    printf "%b\n" "${color}$*${NC}"
 }
 
 # Function to check if running with sudo/root
@@ -161,8 +163,14 @@ install_user() {
     fi
 
     print_color $GREEN "✓ User installation complete!"
-    print_color $YELLOW "\nPlease run: source $SHELL_RC"
-    print_color $YELLOW "Or restart your terminal for PATH changes to take effect."
+    if [[ -n "${SHELL_RC:-}" ]]; then
+        print_color $YELLOW "\nPlease run: source $SHELL_RC"
+        print_color $YELLOW "Or restart your terminal for PATH changes to take effect."
+    else
+        print_color $YELLOW "\nIf you just added PATH/MANPATH in a prior step, run: source ~/.bashrc or ~/.zshrc"
+        print_color $YELLOW "Otherwise, restart your terminal."
+    fi
+
 }
 
 # Function to install system-wide

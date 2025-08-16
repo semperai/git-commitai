@@ -2,7 +2,7 @@
 
 import pytest
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from urllib.error import HTTPError
 
 import git_commitai
