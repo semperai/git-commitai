@@ -4,6 +4,7 @@ import os
 import sys
 import json
 import subprocess
+import shlex
 import argparse
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
@@ -624,7 +625,8 @@ def create_commit_message_file(
 def open_editor(filepath, editor):
     """Open file in editor and wait for it to close."""
     try:
-        subprocess.run([editor, filepath])
+        cmd = shlex.split(editor) + [filepath]
+        subprocess.run(cmd)
     except Exception:
         print(f"Error: Failed to open editor: {editor}")
         sys.exit(1)
