@@ -558,8 +558,6 @@ def get_binary_file_info(filename, amend=False):
     info_parts = []
 
     # Get file extension
-    import os
-
     _, ext = os.path.splitext(filename)
     if ext:
         info_parts.append(f"File type: {ext}")
