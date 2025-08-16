@@ -7,6 +7,11 @@ from urllib.error import HTTPError
 
 import git_commitai
 
+# Disable retry delays for testing
+git_commitai.MAX_RETRIES = 1
+git_commitai.RETRY_DELAY = 0
+git_commitai.RETRY_BACKOFF = 1
+
 
 class TestAPIRequest:
     """Test API request handling."""
