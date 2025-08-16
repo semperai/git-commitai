@@ -926,7 +926,7 @@ def make_api_request(config, message):
             }
 
             # Log headers with redacted auth
-            debug_log(f"Request headers: {redact_secrets(str(headers))}")
+            debug_log(f"Request headers: {headers}")
 
             req = Request(
                 config["api_url"],
