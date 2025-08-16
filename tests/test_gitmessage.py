@@ -209,9 +209,7 @@ class TestGitMessageTemplate:
 
             with patch("os.path.isfile") as mock_isfile:
                 def isfile_side_effect(path):
-                    if path == "/repo/root/.gitmessage":
-                        return True  # Repo .gitmessage exists but will fail to read
-                    return False
+                    return path == "/repo/root/.gitmessage"  # Exists but will fail to read
 
                 mock_isfile.side_effect = isfile_side_effect
 
