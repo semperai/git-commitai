@@ -11,7 +11,7 @@ class TestAmendFeatures:
 
     def test_get_git_diff_amend(self):
         """Test getting diff for --amend."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.side_effect = [
                 "abc123",  # git rev-parse HEAD^
                 "diff --git a/file.txt...",  # git diff parent..HEAD
@@ -23,7 +23,7 @@ class TestAmendFeatures:
 
     def test_get_git_diff_amend_with_staged(self):
         """Test getting diff for --amend with additional staged changes."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.side_effect = [
                 "abc123",  # git rev-parse HEAD^
                 "diff --git a/file1.txt...",  # git diff parent..HEAD
@@ -38,7 +38,7 @@ class TestAmendFeatures:
     def test_create_commit_message_file_amend(self):
         """Test creating commit message file for --amend."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.side_effect = [
                     "M\tfile1.txt\nA\tfile2.txt",  # git diff-tree
                     "M\tfile3.txt",  # git diff --cached
@@ -76,20 +76,21 @@ class TestAmendFeatures:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "--amend"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "--amend"]):
+                                                    git_commitai.main()
 
-                                                # Verify git commit --amend was called
-                                                calls = mock_run.call_args_list
-                                                assert any(["--amend" in str(call) for call in calls])
+                                                    # Verify git commit --amend was called
+                                                    calls = mock_run.call_args_list
+                                                    assert any(["--amend" in str(call) for call in calls])
 
     def test_amend_first_commit(self):
         """Test --amend on the first commit (no parent)."""
-        with patch("git_commitai.run_command") as mock_run:
-            def side_effect(cmd, check=True):
-                if "git rev-parse HEAD^" in cmd:
-                    raise subprocess.CalledProcessError(1, cmd)
-                elif "git diff --cached" in cmd:
+        with patch("git_commitai.run_git") as mock_run:
+            def side_effect(args, check=True):
+                if "rev-parse" in args and "HEAD^" in args:
+                    raise subprocess.CalledProcessError(1, args)
+                elif "diff" in args and "--cached" in args:
                     return "diff --git a/file.txt..."
                 return ""
 

@@ -12,12 +12,12 @@ class TestVerboseFlag:
     def test_create_commit_message_file_with_verbose(self):
         """Test that verbose flag adds diff to commit message file."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
 
-                def side_effect(cmd, check=True):
-                    if "git diff --cached --name-status" in cmd:
+                def side_effect(args, check=True):
+                    if "diff" in args and "--cached" in args and "--name-status" in args:
                         return "M\tfile1.txt\nA\tfile2.py"
-                    elif "git diff --cached" in cmd and "--name-status" not in cmd:
+                    elif "diff" in args and "--cached" in args and "--name-status" not in args:
                         return """diff --git a/file1.txt b/file1.txt
 index 123..456 100644
 --- a/file1.txt
@@ -62,7 +62,7 @@ index 123..456 100644
     def test_verbose_without_diff(self):
         """Test verbose mode when there's no diff to show."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = ""  # No diff
 
                 with tempfile.TemporaryDirectory() as tmpdir:
@@ -80,12 +80,12 @@ index 123..456 100644
     def test_verbose_with_amend(self):
         """Test verbose flag with --amend shows correct diff."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
 
-                def side_effect(cmd, check=True):
-                    if "git rev-parse HEAD^" in cmd:
+                def side_effect(args, check=True):
+                    if "rev-parse" in args and "HEAD^" in args:
                         return "abc123"
-                    elif "git diff abc123..HEAD" in cmd:
+                    elif "diff" in args and "abc123..HEAD" in args:
                         return """diff --git a/original.txt b/original.txt
 index 111..222 100644
 --- a/original.txt
@@ -93,7 +93,7 @@ index 111..222 100644
 @@ -1 +1 @@
 -original content
 +amended content"""
-                    elif "git diff --cached" in cmd and "--name-status" not in cmd:
+                    elif "diff" in args and "--cached" in args and "--name-status" not in args:
                         return """diff --git a/new.txt b/new.txt
 new file mode 100644
 index 000..333
@@ -101,9 +101,9 @@ index 000..333
 +++ b/new.txt
 @@ -0,0 +1 @@
 +new file content"""
-                    elif "git diff-tree" in cmd:
+                    elif "diff-tree" in args:
                         return "M\toriginal.txt"
-                    elif "git diff --cached --name-status" in cmd:
+                    elif "diff" in args and "--cached" in args and "--name-status" in args:
                         return "A\tnew.txt"
                     return ""
 
@@ -130,12 +130,12 @@ index 000..333
     def test_verbose_with_binary_files(self):
         """Test verbose mode properly handles binary files in diff."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
 
-                def side_effect(cmd, check=True):
-                    if "git diff --cached --name-status" in cmd:
+                def side_effect(args, check=True):
+                    if "diff" in args and "--cached" in args and "--name-status" in args:
                         return "A\tlogo.png\nM\tcode.py"
-                    elif "git diff --cached" in cmd and "--name-status" not in cmd:
+                    elif "diff" in args and "--cached" in args and "--name-status" not in args:
                         return """diff --git a/logo.png b/logo.png
 new file mode 100644
 index 000..111
@@ -185,13 +185,14 @@ index 222..333 100644
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "-v"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "-v"]):
+                                                    git_commitai.main()
 
-                                                # Verify create_commit_message_file was called with verbose=True
-                                                mock_create.assert_called_once()
-                                                call_args = mock_create.call_args[1]
-                                                assert call_args["verbose"]
+                                                    # Verify create_commit_message_file was called with verbose=True
+                                                    mock_create.assert_called_once()
+                                                    call_args = mock_create.call_args[1]
+                                                    assert call_args["verbose"]
 
     def test_verbose_with_multiple_flags(self):
         """Test verbose combined with other flags."""
@@ -212,20 +213,21 @@ index 222..333 100644
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            # Combine -a, -n, -v flags
-                                            with patch("sys.argv", ["git-commitai", "-a", "-n", "-v"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                # Combine -a, -n, -v flags
+                                                with patch("sys.argv", ["git-commitai", "-a", "-n", "-v"]):
+                                                    git_commitai.main()
 
-                                                # Verify all flags are passed correctly
-                                                call_args = mock_create.call_args[1]
-                                                assert call_args["auto_staged"]
-                                                assert call_args["no_verify"]
-                                                assert call_args["verbose"]
+                                                    # Verify all flags are passed correctly
+                                                    call_args = mock_create.call_args[1]
+                                                    assert call_args["auto_staged"]
+                                                    assert call_args["no_verify"]
+                                                    assert call_args["verbose"]
 
     def test_verbose_diff_formatting(self):
         """Test that diff lines are properly formatted as comments."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 # Multi-line diff with various git diff elements
                 complex_diff = """diff --git a/src/main.py b/src/main.py
 index abc123..def456 100644
@@ -244,10 +246,10 @@ index abc123..def456 100644
 +
 +    return 0"""
 
-                def side_effect(cmd, check=True):
-                    if "git diff --cached --name-status" in cmd:
+                def side_effect(args, check=True):
+                    if "diff" in args and "--cached" in args and "--name-status" in args:
                         return "M\tsrc/main.py"
-                    elif "git diff --cached" in cmd and "--name-status" not in cmd:
+                    elif "diff" in args and "--cached" in args and "--name-status" not in args:
                         return complex_diff
                     return ""
 
@@ -274,7 +276,7 @@ index abc123..def456 100644
     def test_verbose_separator_not_in_normal_mode(self):
         """Test that verbose separator is not added without -v flag."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = "M\tfile.txt"
 
                 with tempfile.TemporaryDirectory() as tmpdir:

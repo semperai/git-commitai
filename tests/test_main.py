@@ -21,14 +21,6 @@ class TestMainFlow:
                     with patch("sys.argv", ["git-commitai"]):
                         git_commitai.main()
 
-                        # Ensure git commit was invoked
-                        calls = [c.args[0] for c in mock_run.call_args_list if c.args]
-                        assert any(
-                            isinstance(cmd, list) and "commit" in cmd
-                            for cmd in calls
-                        )
-
-
                 assert exc_info.value.code == 128
                 assert "fatal: not a git repository" in fake_out.getvalue()
 
@@ -51,8 +43,16 @@ class TestMainFlow:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai"]):
+                                                    git_commitai.main()
+
+                                                    # Ensure git commit was invoked
+                                                    calls = [c.args[0] for c in mock_run.call_args_list if c.args]
+                                                    assert any(
+                                                        isinstance(cmd, list) and "commit" in cmd
+                                                        for cmd in calls
+                                                    )
 
     def test_aborted_commit_no_save(self):
         """Test aborting commit by not saving the file."""
@@ -129,13 +129,14 @@ class TestMainFlow:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "-m", "Added new feature"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "-m", "Added new feature"]):
+                                                    git_commitai.main()
 
-                                                # Check that context was included in prompt
-                                                call_args = mock_api.call_args[0]
-                                                prompt = call_args[1]
-                                                assert "Added new feature" in prompt
+                                                    # Check that context was included in prompt
+                                                    call_args = mock_api.call_args[0]
+                                                    prompt = call_args[1]
+                                                    assert "Added new feature" in prompt
 
     def test_git_commit_failure(self):
         """Test handling of git commit command failure."""
@@ -164,8 +165,9 @@ class TestMainFlow:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with pytest.raises(SystemExit) as exc_info:
-                                                with patch("sys.argv", ["git-commitai"]):
-                                                    git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with pytest.raises(SystemExit) as exc_info:
+                                                    with patch("sys.argv", ["git-commitai"]):
+                                                        git_commitai.main()
 
-                                            assert exc_info.value.code == 1
+                                                assert exc_info.value.code == 1

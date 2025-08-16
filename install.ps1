@@ -180,6 +180,10 @@ python "$scriptPath" %*
     $batchPath = "$systemBin\git-commitai.cmd"
     Set-Content -Path $batchPath -Value $batchContent
 
+    # Set up git alias (global)
+    Write-Color "Setting up git alias..." "Yellow"
+    git config --system alias.commitai "!python `"$scriptPath`"" 2>$null
+
     # Add to system PATH
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
     if ($currentPath -notlike "*$systemBin*") {
@@ -272,7 +276,8 @@ function Test-Installation {
 
     # Test git-commitai command
     try {
-        python (Get-Command git-commitai.cmd).Source --version 2>&1 | Out-Null
+        $cmd = Get-Command git-commitai -ErrorAction Stop
+        & $cmd.Path --version 2>&1 | Out-Null
         Write-Color "✓ git-commitai command found" "Green"
     } catch {
         Write-Color "⚠ git-commitai not accessible yet (restart terminal)" "Yellow"

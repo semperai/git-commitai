@@ -27,7 +27,7 @@ class TestAllowEmptyFlag:
 
     def test_get_staged_files_with_allow_empty(self):
         """Test get_staged_files returns appropriate message for empty commits."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             # No staged files
             mock_run.return_value = ""
 
@@ -41,13 +41,13 @@ class TestAllowEmptyFlag:
 
     def test_get_staged_files_with_allow_empty_and_files(self):
         """Test get_staged_files with allow_empty when there are actually files."""
-        with patch("git_commitai.run_command") as mock_run:
-            def side_effect(cmd, check=True):
-                if "git diff --cached --name-only" in cmd:
+        with patch("git_commitai.run_git") as mock_run:
+            def side_effect(args, check=True):
+                if "diff" in args and "--cached" in args and "--name-only" in args:
                     return "file1.py"
-                elif "git diff --cached --numstat -- file1.py" in cmd:
+                elif "diff" in args and "--cached" in args and "--numstat" in args and "file1.py" in args:
                     return "10\t5\tfile1.py"  # Not binary
-                elif "git show :file1.py" in cmd:
+                elif "show" in args and ":file1.py" in args:
                     return 'print("hello")'
                 return ""
 
@@ -61,7 +61,7 @@ class TestAllowEmptyFlag:
 
     def test_get_git_diff_with_allow_empty(self):
         """Test get_git_diff returns appropriate message for empty commits."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             # No diff
             mock_run.return_value = ""
 
@@ -75,7 +75,7 @@ class TestAllowEmptyFlag:
 
     def test_get_git_diff_with_allow_empty_and_changes(self):
         """Test get_git_diff with allow_empty when there are actually changes."""
-        with patch("git_commitai.run_command") as mock_run:
+        with patch("git_commitai.run_git") as mock_run:
             mock_run.return_value = "diff --git a/file.txt b/file.txt\n+new line"
 
             # Even with allow_empty, if there are changes, show them
@@ -87,7 +87,7 @@ class TestAllowEmptyFlag:
     def test_create_commit_message_file_with_allow_empty(self):
         """Test that commit message file notes empty commit."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = ""  # No staged files
 
                 with tempfile.TemporaryDirectory() as tmpdir:
@@ -111,7 +111,7 @@ class TestAllowEmptyFlag:
     def test_create_commit_message_file_verbose_with_allow_empty(self):
         """Test verbose mode with empty commit."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = ""  # No diff
 
                 with tempfile.TemporaryDirectory() as tmpdir:
@@ -150,29 +150,30 @@ class TestAllowEmptyFlag:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "--allow-empty"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "--allow-empty"]):
+                                                    git_commitai.main()
 
-                                                # Verify check_staged_changes was called with allow_empty=True
-                                                mock_check.assert_called_once_with(
-                                                    amend=False,
-                                                    auto_stage=False,
-                                                    allow_empty=True
-                                                )
+                                                    # Verify check_staged_changes was called with allow_empty=True
+                                                    mock_check.assert_called_once_with(
+                                                        amend=False,
+                                                        auto_stage=False,
+                                                        allow_empty=True
+                                                    )
 
-                                                # Verify create_commit_message_file was called with allow_empty=True
-                                                mock_create.assert_called_once()
-                                                call_args = mock_create.call_args[1]
-                                                assert call_args["allow_empty"]
+                                                    # Verify create_commit_message_file was called with allow_empty=True
+                                                    mock_create.assert_called_once()
+                                                    call_args = mock_create.call_args[1]
+                                                    assert call_args["allow_empty"]
 
-                                                # Verify git commit was called with --allow-empty
-                                                commit_calls = [
-                                                    call for call in mock_run.call_args_list
-                                                    if "commit" in str(call)
-                                                ]
-                                                if commit_calls:
-                                                    last_commit_call = commit_calls[-1]
-                                                    assert "--allow-empty" in last_commit_call[0][0]
+                                                    # Verify git commit was called with --allow-empty
+                                                    commit_calls = [
+                                                        call for call in mock_run.call_args_list
+                                                        if "commit" in str(call)
+                                                    ]
+                                                    if commit_calls:
+                                                        last_commit_call = commit_calls[-1]
+                                                        assert "--allow-empty" in last_commit_call[0][0]
 
     def test_prompt_includes_allow_empty_note(self):
         """Test that the AI prompt mentions empty commit when --allow-empty is used."""
@@ -193,16 +194,17 @@ class TestAllowEmptyFlag:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "--allow-empty", "-m", "Release v2.0"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "--allow-empty", "-m", "Release v2.0"]):
+                                                    git_commitai.main()
 
-                                                # Check that the prompt includes empty commit note
-                                                call_args = mock_api.call_args[0]
-                                                prompt = call_args[1]
-                                                assert "This is an empty commit with no changes" in prompt
-                                                assert "--allow-empty" in prompt
-                                                assert "Generate a message explaining why this empty commit is being created" in prompt
-                                                assert "Release v2.0" in prompt
+                                                    # Check that the prompt includes empty commit note
+                                                    call_args = mock_api.call_args[0]
+                                                    prompt = call_args[1]
+                                                    assert "This is an empty commit with no changes" in prompt
+                                                    assert "--allow-empty" in prompt
+                                                    assert "Generate a message explaining why this empty commit is being created" in prompt
+                                                    assert "Release v2.0" in prompt
 
     def test_allow_empty_with_amend(self):
         """Test that --allow-empty works with --amend."""
@@ -223,18 +225,19 @@ class TestAllowEmptyFlag:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "--amend", "--allow-empty"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "--amend", "--allow-empty"]):
+                                                    git_commitai.main()
 
-                                                commit_calls = [
-                                                    call for call in mock_run.call_args_list
-                                                    if "commit" in str(call)
-                                                ]
-                                                if commit_calls:
-                                                    last_commit_call = commit_calls[-1]
-                                                    # Should have both --amend and --allow-empty
-                                                    assert "--amend" in last_commit_call[0][0]
-                                                    assert "--allow-empty" in last_commit_call[0][0]
+                                                    commit_calls = [
+                                                        call for call in mock_run.call_args_list
+                                                        if "commit" in str(call)
+                                                    ]
+                                                    if commit_calls:
+                                                        last_commit_call = commit_calls[-1]
+                                                        # Should have both --amend and --allow-empty
+                                                        assert "--amend" in last_commit_call[0][0]
+                                                        assert "--allow-empty" in last_commit_call[0][0]
 
     def test_allow_empty_with_auto_stage(self):
         """Test that --allow-empty works with -a flag."""
@@ -255,16 +258,17 @@ class TestAllowEmptyFlag:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "-a", "--allow-empty"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "-a", "--allow-empty"]):
+                                                    git_commitai.main()
 
-                                                commit_calls = [
-                                                    call for call in mock_run.call_args_list
-                                                    if "commit" in str(call)
-                                                ]
-                                                if commit_calls:
-                                                    last_commit_call = commit_calls[-1]
-                                                    assert "--allow-empty" in last_commit_call[0][0]
+                                                    commit_calls = [
+                                                        call for call in mock_run.call_args_list
+                                                        if "commit" in str(call)
+                                                    ]
+                                                    if commit_calls:
+                                                        last_commit_call = commit_calls[-1]
+                                                        assert "--allow-empty" in last_commit_call[0][0]
 
     def test_allow_empty_with_no_verify(self):
         """Test combining --allow-empty with --no-verify."""
@@ -285,17 +289,18 @@ class TestAllowEmptyFlag:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "--allow-empty", "-n"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "--allow-empty", "-n"]):
+                                                    git_commitai.main()
 
-                                                commit_calls = [
-                                                    call for call in mock_run.call_args_list
-                                                    if "commit" in str(call)
-                                                ]
-                                                if commit_calls:
-                                                    last_commit_call = commit_calls[-1]
-                                                    assert "--allow-empty" in last_commit_call[0][0]
-                                                    assert "--no-verify" in last_commit_call[0][0]
+                                                    commit_calls = [
+                                                        call for call in mock_run.call_args_list
+                                                        if "commit" in str(call)
+                                                    ]
+                                                    if commit_calls:
+                                                        last_commit_call = commit_calls[-1]
+                                                        assert "--allow-empty" in last_commit_call[0][0]
+                                                        assert "--no-verify" in last_commit_call[0][0]
 
     def test_allow_empty_with_verbose(self):
         """Test combining --allow-empty with --verbose."""
@@ -316,13 +321,14 @@ class TestAllowEmptyFlag:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "--allow-empty", "-v"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "--allow-empty", "-v"]):
+                                                    git_commitai.main()
 
-                                                # Verify both flags are passed
-                                                call_args = mock_create.call_args[1]
-                                                assert call_args["allow_empty"]
-                                                assert call_args["verbose"]
+                                                    # Verify both flags are passed
+                                                    call_args = mock_create.call_args[1]
+                                                    assert call_args["allow_empty"]
+                                                    assert call_args["verbose"]
 
     def test_allow_empty_all_flags_combined(self):
         """Test combining --allow-empty with multiple other flags."""
@@ -343,42 +349,43 @@ class TestAllowEmptyFlag:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            # Combine -a, -n, -v, --allow-empty, and -m
-                                            with patch("sys.argv", [
-                                                "git-commitai",
-                                                "-a",
-                                                "-n",
-                                                "-v",
-                                                "--allow-empty",
-                                                "-m",
-                                                "CI/CD trigger"
-                                            ]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                # Combine -a, -n, -v, --allow-empty, and -m
+                                                with patch("sys.argv", [
+                                                    "git-commitai",
+                                                    "-a",
+                                                    "-n",
+                                                    "-v",
+                                                    "--allow-empty",
+                                                    "-m",
+                                                    "CI/CD trigger"
+                                                ]):
+                                                    git_commitai.main()
 
-                                                # Check API prompt
-                                                call_args = mock_api.call_args[0]
-                                                prompt = call_args[1]
-                                                assert "CI/CD trigger" in prompt
-                                                assert "automatically staged" in prompt
-                                                assert "hooks will be skipped" in prompt
-                                                assert "empty commit" in prompt
+                                                    # Check API prompt
+                                                    call_args = mock_api.call_args[0]
+                                                    prompt = call_args[1]
+                                                    assert "CI/CD trigger" in prompt
+                                                    assert "automatically staged" in prompt
+                                                    assert "hooks will be skipped" in prompt
+                                                    assert "empty commit" in prompt
 
-                                                # Check create_commit_message_file call
-                                                create_args = mock_create.call_args[1]
-                                                assert create_args["auto_staged"]
-                                                assert create_args["no_verify"]
-                                                assert create_args["verbose"]
-                                                assert create_args["allow_empty"]
+                                                    # Check create_commit_message_file call
+                                                    create_args = mock_create.call_args[1]
+                                                    assert create_args["auto_staged"]
+                                                    assert create_args["no_verify"]
+                                                    assert create_args["verbose"]
+                                                    assert create_args["allow_empty"]
 
-                                                # Check git commit command
-                                                commit_calls = [
-                                                    call for call in mock_run.call_args_list
-                                                    if "commit" in str(call)
-                                                ]
-                                                if commit_calls:
-                                                    last_commit_call = commit_calls[-1]
-                                                    assert "--allow-empty" in last_commit_call[0][0]
-                                                    assert "--no-verify" in last_commit_call[0][0]
+                                                    # Check git commit command
+                                                    commit_calls = [
+                                                        call for call in mock_run.call_args_list
+                                                        if "commit" in str(call)
+                                                    ]
+                                                    if commit_calls:
+                                                        last_commit_call = commit_calls[-1]
+                                                        assert "--allow-empty" in last_commit_call[0][0]
+                                                        assert "--no-verify" in last_commit_call[0][0]
 
     def test_allow_empty_without_flag_normal_behavior(self):
         """Test that without --allow-empty, empty commits are rejected."""
@@ -417,16 +424,17 @@ class TestAllowEmptyFlag:
                             with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                 with patch("git_commitai.open_editor"):
                                     with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                        with patch("git_commitai.get_staged_files", return_value="file.py\n```\ncode\n```"):
-                                            with patch("git_commitai.get_git_diff", return_value="```\ndiff\n```"):
-                                                with patch("sys.argv", ["git-commitai", "--allow-empty"]):
-                                                    git_commitai.main()
+                                        with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                            with patch("git_commitai.get_staged_files", return_value="file.py\n```\ncode\n```"):
+                                                with patch("git_commitai.get_git_diff", return_value="```\ndiff\n```"):
+                                                    with patch("sys.argv", ["git-commitai", "--allow-empty"]):
+                                                        git_commitai.main()
 
-                                                    # Should still include --allow-empty even with changes
-                                                    commit_calls = [
-                                                        call for call in mock_run.call_args_list
-                                                        if "commit" in str(call)
-                                                    ]
-                                                    if commit_calls:
-                                                        last_commit_call = commit_calls[-1]
-                                                        assert "--allow-empty" in last_commit_call[0][0]
+                                                        # Should still include --allow-empty even with changes
+                                                        commit_calls = [
+                                                            call for call in mock_run.call_args_list
+                                                            if "commit" in str(call)
+                                                        ]
+                                                        if commit_calls:
+                                                            last_commit_call = commit_calls[-1]
+                                                            assert "--allow-empty" in last_commit_call[0][0]

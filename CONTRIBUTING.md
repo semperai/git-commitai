@@ -127,7 +127,7 @@ We use pytest for testing. Please write tests for any new functionality.
 pytest
 
 # Run with coverage
-pytest --cov=src --cov-report=html
+pytest --cov=git_commitai --cov-report=html
 
 # Run specific test file
 pytest tests/test_commit.py
@@ -176,16 +176,16 @@ We follow PEP 8 with these tools:
 
 ```bash
 # Format code
-black src/ tests/ --line-length 100
+black . --line-length 100
 
 # Check linting
-flake8 src/ tests/
+flake8 .
 
 # Sort imports
-isort src/ tests/
+isort .
 
 # Type checking
-mypy src/
+mypy .
 ```
 
 ### Documentation Style Guide
