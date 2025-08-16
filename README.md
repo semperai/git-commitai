@@ -129,10 +129,13 @@ git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "lla
 
 Git Commit AI automatically reads and uses your `.gitmessage` template files to understand your project's commit conventions. This helps generate messages that match your team's style guide.
 
-The tool looks for templates in this order (first found wins):
-1. **Git config template**: Set via `git config commit.template`
-2. **Repository template**: `.gitmessage` in your repository root
+The tool looks for templates in this **precedence order** (first found wins):
+
+1. **Repository template**: `.gitmessage` in your repository root
+2. **Git config template**: Set via `git config commit.template`
 3. **Global template**: `~/.gitmessage` in your home directory
+
+> **Note**: Repository-specific `.gitmessage` files take precedence over configured templates. This ensures teams can enforce project-specific conventions by including a `.gitmessage` file in their repository, regardless of individual developer configurations.
 
 #### Setting Up a Template
 
@@ -159,14 +162,24 @@ cat > .gitmessage << 'EOF'
 # The body should explain the motivation for the change
 EOF
 
-# Or set a global template
+# Or configure a template via git config
 git config --global commit.template ~/.gitmessage
+git config commit.template .github/commit-template  # Repository-specific config
 
-# Or set a repository-specific template
-git config commit.template .github/commit-template
+# Or use a global fallback template
+cp .gitmessage ~/.gitmessage
 ```
 
 When a template is found, Git Commit AI uses it as additional context to generate messages that follow your conventions while still adhering to Git best practices.
+
+#### Template Precedence Example
+
+If you have:
+- `.gitmessage` in your repository root
+- A template configured via `git config commit.template`
+- `~/.gitmessage` in your home directory
+
+Git Commit AI will use the `.gitmessage` from your repository root, ignoring the others. This ensures project-specific conventions always take precedence.
 
 ## 📖 Usage
 
@@ -327,6 +340,9 @@ git commitai
 
 # The AI will generate messages following your template format
 # Example output: "feat(auth): Add JWT token validation"
+
+# Note: This .gitmessage in your repo will override any configured templates
+# or global ~/.gitmessage, ensuring team conventions are followed
 ```
 
 ## 🐛 Debugging
@@ -355,7 +371,7 @@ The debug output includes:
 - API request/response details
 - File processing information
 - Configuration and environment details (including CLI overrides)
-- Template file detection and loading
+- Template file detection and loading (shows which template was chosen and why)
 - Error messages and stack traces
 
 When reporting bugs, please include relevant portions of the debug output.

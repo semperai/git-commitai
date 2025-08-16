@@ -835,7 +835,17 @@ def read_gitmessage_template():
     # Check multiple possible locations in order of precedence
     possible_paths = []
 
-    # 1. Check git config for commit.template
+    # 1. Check for .gitmessage in repository root
+    try:
+        git_root = get_git_root()
+        repo_gitmessage = os.path.join(git_root, ".gitmessage")
+        if os.path.isfile(repo_gitmessage):
+            possible_paths.append(repo_gitmessage)
+            debug_log(f"Found repository .gitmessage: {repo_gitmessage}")
+    except Exception:
+        pass
+
+    # 2. Check git config for commit.template
     try:
         configured_template = run_git(["config", "--get", "commit.template"], check=False).strip()
         if configured_template:
@@ -846,24 +856,22 @@ def read_gitmessage_template():
             elif not os.path.isabs(configured_template):
                 git_root = get_git_root()
                 configured_template = os.path.join(git_root, configured_template)
-            possible_paths.append(configured_template)
-            debug_log(f"Found configured template: {configured_template}")
-    except Exception:
-        pass
 
-    # 2. Check for .gitmessage in repository root
-    try:
-        git_root = get_git_root()
-        repo_gitmessage = os.path.join(git_root, ".gitmessage")
-        possible_paths.append(repo_gitmessage)
+            # Only add if file exists and we haven't already found a repo .gitmessage
+            if os.path.isfile(configured_template) and not possible_paths:
+                possible_paths.append(configured_template)
+                debug_log(f"Found configured template: {configured_template}")
     except Exception:
         pass
 
     # 3. Check for global .gitmessage in home directory
-    home_gitmessage = os.path.expanduser("~/.gitmessage")
-    possible_paths.append(home_gitmessage)
+    if not possible_paths:  # Only check if we haven't found anything yet
+        home_gitmessage = os.path.expanduser("~/.gitmessage")
+        if os.path.isfile(home_gitmessage):
+            possible_paths.append(home_gitmessage)
+            debug_log(f"Found home directory .gitmessage: {home_gitmessage}")
 
-    # Try to read from the first existing file
+    # Try to read from the first existing file (which is now the highest priority one)
     for path in possible_paths:
         if path and os.path.isfile(path):
             try:
