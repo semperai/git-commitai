@@ -180,6 +180,10 @@ python "$scriptPath" %*
     $batchPath = "$systemBin\git-commitai.cmd"
     Set-Content -Path $batchPath -Value $batchContent
 
+    # Set up git alias (global)
+    Write-Color "Setting up git alias..." "Yellow"
+    git config --system alias.commitai "!python `"$scriptPath`"" 2>$null
+
     # Add to system PATH
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
     if ($currentPath -notlike "*$systemBin*") {
