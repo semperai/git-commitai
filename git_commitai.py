@@ -282,9 +282,7 @@ def build_ai_prompt(repo_config, args, allow_empty=False, author=None, date=None
                     base_prompt = base_prompt.replace(placeholder, value)
 
         # Normalize excessive blank lines introduced by empty replacements
-        while "\n\n\n" in base_prompt:
-            base_prompt = base_prompt.replace("\n\n\n", "\n\n")
-        base_prompt = base_prompt.strip("\n")
+        base_prompt = re.sub(r"\n{3,}", "\n\n", base_prompt).strip("\n")
 
     else:
         # Use default prompt
