@@ -24,7 +24,7 @@ p)
 
 - Make sure you have a [GitHub account](https://github.com/signup/free)
 - Fork the repository on GitHub
-- Read the [README.md](README.md) for an overview of the project
+- Read the [README.md](../../README.md) for an overview of the project
 - Check the [Issues](https://github.com/semperai/git-commitai/issues) page for something to work on
 
 ## Project Philosophy
