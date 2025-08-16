@@ -14,6 +14,9 @@ git\-commitai \- Generate intelligent git commit messages using AI
 [\fI\-\-amend\fR]
 [\fI\-\-allow\-empty\fR]
 [\fI\-\-debug\fR]
+[\fI\-\-api\-key\fR \fIkey\fR]
+[\fI\-\-api\-url\fR \fIurl\fR]
+[\fI\-\-model\fR \fIname\fR]
 [\fI\-\-help\fR]
 
 .SH DESCRIPTION
@@ -61,23 +64,35 @@ These options are unique to git-commitai:
 Enable debug logging to \fI~/.gitcommitai.debug.log\fR. This logs all git commands, API requests, file processing, and decision points. Useful for troubleshooting issues or understanding what the tool is doing internally. Debug output is also printed to stderr for immediate feedback.
 
 .TP
+.BR \-\-api\-key " " \fIkey\fR
+Override the API key for this command. This temporarily overrides the \fBGIT_COMMIT_AI_KEY\fR environment variable. Useful for testing different API providers or switching between accounts without modifying environment variables.
+
+.TP
+.BR \-\-api\-url " " \fIurl\fR
+Override the API endpoint URL for this command. This temporarily overrides the \fBGIT_COMMIT_AI_URL\fR environment variable. Useful for testing local models, different providers, or custom endpoints.
+
+.TP
+.BR \-\-model " " \fIname\fR
+Override the AI model name for this command. This temporarily overrides the \fBGIT_COMMIT_AI_MODEL\fR environment variable. Allows testing different models or using specialized models for specific types of commits.
+
+.TP
 .BR \-h ", " \-\-help
 Display this help message and exit.
 
 .SH ENVIRONMENT VARIABLES
 .TP
 .B GIT_COMMIT_AI_KEY
-\fB(Required)\fR Your API key for the AI service. Must be set before using git-commitai.
+\fB(Required)\fR Your API key for the AI service. Must be set before using git-commitai unless overridden with \fB\-\-api\-key\fR.
 
 .TP
 .B GIT_COMMIT_AI_URL
-The API endpoint URL for your AI provider. Defaults to OpenRouter if not set.
+The API endpoint URL for your AI provider. Defaults to OpenRouter if not set. Can be overridden with \fB\-\-api\-url\fR.
 .br
 Default: \fIhttps://openrouter.ai/api/v1/chat/completions\fR
 
 .TP
 .B GIT_COMMIT_AI_MODEL
-The AI model to use for generating commit messages.
+The AI model to use for generating commit messages. Can be overridden with \fB\-\-model\fR.
 .br
 Default: \fIqwen/qwen3-coder\fR
 
@@ -141,12 +156,35 @@ $ git commitai \-\-allow\-empty \-m "Trigger CI pipeline rebuild"
 $ git commitai \-\-allow\-empty \-m "Release marker for v2.0.0"
 .fi
 
+.SS Override API Configuration
+Use different models or providers for specific commits:
+.PP
+.nf
+# Try a different model
+$ git commitai \-\-model "gpt\-4o"
+
+# Use a local LLM
+$ git commitai \-\-api\-url "http://localhost:11434/v1/chat/completions" \\
+              \-\-model "codellama" \-\-api\-key "not\-needed"
+
+# Switch to Claude for complex refactoring
+$ git commitai \-\-model "claude\-3.5\-sonnet" \\
+              \-\-api\-key "sk\-ant\-..." \\
+              \-\-api\-url "https://api.anthropic.com/v1/messages"
+
+# Test with a different API key
+$ git commitai \-\-api\-key "sk\-different\-key\-..."
+.fi
+
 .SS Debug Mode
 Enable debug logging for troubleshooting:
 .PP
 .nf
 $ git commitai \-\-debug
 $ git commitai \-\-debug \-a \-m "Debug auto-staging"
+
+# Debug with API overrides
+$ git commitai \-\-debug \-\-model "gpt\-4" \-\-api\-key "sk\-..."
 
 # View debug log
 $ cat ~/.gitcommitai.debug.log
@@ -162,35 +200,59 @@ Multiple flags can be combined:
 $ git commitai \-a \-n \-v
 $ git commitai \-\-amend \-v \-\-debug
 $ git commitai \-\-allow\-empty \-n
+$ git commitai \-\-debug \-\-model "gpt\-4" \-a \-v
 .fi
 
 .SH PROVIDER CONFIGURATION
+Configuration can be set via environment variables or overridden per-command with CLI flags.
+
 .SS OpenRouter (Recommended)
 .nf
+# Environment variables (persistent)
 export GIT_COMMIT_AI_KEY="sk\-or\-v1\-..."
 export GIT_COMMIT_AI_URL="https://openrouter.ai/api/v1/chat/completions"
 export GIT_COMMIT_AI_MODEL="anthropic/claude\-3.5\-sonnet"
+
+# Or override per-command
+git commitai \-\-api\-key "sk\-or\-v1\-..." \\
+            \-\-model "anthropic/claude\-3.5\-sonnet"
 .fi
 
 .SS OpenAI
 .nf
+# Environment variables
 export GIT_COMMIT_AI_KEY="sk\-..."
 export GIT_COMMIT_AI_URL="https://api.openai.com/v1/chat/completions"
 export GIT_COMMIT_AI_MODEL="gpt\-4o"
+
+# Or override per-command
+git commitai \-\-api\-url "https://api.openai.com/v1/chat/completions" \\
+            \-\-model "gpt\-4o" \-\-api\-key "sk\-..."
 .fi
 
 .SS Anthropic Claude
 .nf
+# Environment variables
 export GIT_COMMIT_AI_KEY="sk\-ant\-..."
 export GIT_COMMIT_AI_URL="https://api.anthropic.com/v1/messages"
 export GIT_COMMIT_AI_MODEL="claude\-3\-opus\-20240229"
+
+# Or override per-command
+git commitai \-\-api\-url "https://api.anthropic.com/v1/messages" \\
+            \-\-model "claude\-3\-opus\-20240229" \\
+            \-\-api\-key "sk\-ant\-..."
 .fi
 
 .SS Local LLMs (Ollama)
 .nf
+# Environment variables
 export GIT_COMMIT_AI_KEY="not\-needed"
 export GIT_COMMIT_AI_URL="http://localhost:11434/v1/chat/completions"
 export GIT_COMMIT_AI_MODEL="llama2"
+
+# Or override per-command
+git commitai \-\-api\-url "http://localhost:11434/v1/chat/completions" \\
+            \-\-model "llama2" \-\-api\-key "not\-needed"
 .fi
 
 .SH HOW IT WORKS
@@ -201,7 +263,7 @@ Detects file types and handles binary files appropriately
 .IP 3. 4
 Gathers full file contents for better context understanding
 .IP 4. 4
-Sends the context to your configured AI model
+Sends the context to your configured AI model (or CLI-specified model)
 .IP 5. 4
 Opens your git editor with the generated message
 .IP 6. 4
@@ -214,6 +276,8 @@ When the \fB\-\-debug\fR flag is enabled, git-commitai logs detailed information
 All git commands executed and their results
 .IP \(bu 2
 API request details (URL, model, prompt size, response size)
+.IP \(bu 2
+API configuration source (environment variable vs CLI override)
 .IP \(bu 2
 File processing information (which files are staged, binary detection)
 .IP \(bu 2
@@ -290,6 +354,8 @@ Cost varies by model - smaller models are more economical for simple changes
 .IP \(bu 2
 The AI sees both the diff and full file contents for context
 .IP \(bu 2
+CLI flags override environment variables for that command only
+.IP \(bu 2
 Debug logs may contain sensitive information about your code structure; review before sharing
 
 .SH BUGS
@@ -297,7 +363,7 @@ Report bugs at: https://github.com/semperai/git-commitai/issues
 
 When reporting bugs, please include:
 .IP \(bu 2
-The command you ran
+The command you ran (including any CLI overrides)
 .IP \(bu 2
 Your environment (OS, Python version, Git version)
 .IP \(bu 2

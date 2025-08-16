@@ -2,7 +2,7 @@
 
 import pytest
 import json
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from urllib.error import HTTPError
 
 import git_commitai
@@ -86,12 +86,23 @@ class TestEnvConfig:
         """Test behavior when API key is not set."""
         with patch.dict("os.environ", {}, clear=True):
             with pytest.raises(SystemExit):
-                git_commitai.get_env_config()
+                # Create a mock args object with no overrides
+                mock_args = MagicMock()
+                mock_args.api_key = None
+                mock_args.api_url = None
+                mock_args.model = None
+                git_commitai.get_env_config(mock_args)
 
     def test_with_api_key(self):
         """Test configuration with API key set."""
         with patch.dict("os.environ", {"GIT_COMMIT_AI_KEY": "test-key"}):
-            config = git_commitai.get_env_config()
+            # Create a mock args object with no overrides
+            mock_args = MagicMock()
+            mock_args.api_key = None
+            mock_args.api_url = None
+            mock_args.model = None
+
+            config = git_commitai.get_env_config(mock_args)
             assert config["api_key"] == "test-key"
             assert config["api_url"] == "https://openrouter.ai/api/v1/chat/completions"  # default
             assert config["model"] == "qwen/qwen3-coder"  # default
@@ -103,7 +114,13 @@ class TestEnvConfig:
             "GIT_COMMIT_AI_URL": "https://custom-api.com",
             "GIT_COMMIT_AI_MODEL": "custom-model"
         }):
-            config = git_commitai.get_env_config()
+            # Create a mock args object with no overrides
+            mock_args = MagicMock()
+            mock_args.api_key = None
+            mock_args.api_url = None
+            mock_args.model = None
+
+            config = git_commitai.get_env_config(mock_args)
             assert config["api_key"] == "custom-key"
             assert config["api_url"] == "https://custom-api.com"
             assert config["model"] == "custom-model"

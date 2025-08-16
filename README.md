@@ -115,6 +115,16 @@ export GIT_COMMIT_AI_MODEL="qwen/qwen3-coder"
 
 Add these to your `~/.bashrc` or `~/.zshrc` to make them permanent.
 
+You can also override these settings per-command using CLI flags:
+
+```bash
+# Use a different model for a specific commit
+git commitai --model "gpt-4o" --api-key "sk-..."
+
+# Test with a local LLM
+git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "llama2"
+```
+
 ## 📖 Usage
 
 ```bash
@@ -127,6 +137,9 @@ git commitai -m "Refactored auth system for JWT"
 
 # Auto-stage tracked files
 git commitai -a
+
+# Override API settings for this commit
+git commitai --model "claude-3.5-sonnet" --api-key "sk-ant-..."
 
 # Debug mode for troubleshooting
 git commitai --debug
@@ -150,6 +163,9 @@ These commands are unique to `git commitai` and not found in standard `git commi
 |------|-------------|---------|
 | `-m, --message <context>` | Provide context for AI | **Modified behavior**: Unlike `git commit` where this sets the entire message, in `git commitai` this provides context to help the AI understand your intent |
 | `--debug` | Enable debug logging | Logs all operations to `~/.gitcommitai.debug.log` for troubleshooting. Shows git commands, API requests, and decision points |
+| `--api-key <key>` | Override API key | Temporarily use a different API key for this commit only. Overrides `GIT_COMMIT_AI_KEY` environment variable |
+| `--api-url <url>` | Override API endpoint | Use a different API endpoint for this commit. Useful for testing different providers or local models |
+| `--model <name>` | Override model name | Use a different AI model for this commit. Overrides `GIT_COMMIT_AI_MODEL` environment variable |
 
 ### Standard Git Commit Commands Support
 
@@ -211,6 +227,7 @@ The following table shows all standard `git commit` flags and their support stat
 - ⚡ **Smart context** - Understands both diffs and full file contents
 - 🎯 **Git native** - Respects your git editor, hooks, and workflow
 - 🐛 **Debug mode** - Built-in debugging for troubleshooting issues
+- 🔄 **CLI overrides** - Override API settings per-command for testing and flexibility
 
 ## 🧪 Examples
 
@@ -235,9 +252,18 @@ git commitai --allow-empty -m "Trigger deployment"
 # Review changes while committing
 git commitai -v
 
+# Test with a different model
+git commitai --model "gpt-4o" --api-key "sk-..."
+
+# Use local LLM for sensitive code
+git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "codellama"
+
 # Debug mode for troubleshooting
 git commitai --debug
 git commitai --debug -a -m "Testing auto-stage"
+
+# Combine CLI overrides with debug
+git commitai --debug --model "claude-3.5-sonnet" --api-key "sk-ant-..."
 
 # Check debug log
 cat ~/.gitcommitai.debug.log
@@ -255,6 +281,9 @@ git commitai --debug
 # Debug with other flags
 git commitai --debug -a -v
 
+# Debug with API overrides
+git commitai --debug --model "gpt-4" --api-url "https://api.openai.com/v1/chat/completions"
+
 # View the debug log
 cat ~/.gitcommitai.debug.log
 
@@ -266,7 +295,7 @@ The debug log includes:
 - All git commands executed
 - API request/response details
 - File processing information
-- Configuration and environment details
+- Configuration and environment details (including CLI overrides)
 - Error messages and stack traces
 
 When reporting bugs, please include relevant portions of the debug log.

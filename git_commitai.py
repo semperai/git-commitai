@@ -44,16 +44,16 @@ def show_man_page():
     return False
 
 
-def get_env_config():
-    """Get configuration from environment variables."""
+def get_env_config(args):
+    """Get configuration from environment variables and command line args."""
     debug_log("Loading environment configuration")
 
     config = {
-        "api_key": os.environ.get("GIT_COMMIT_AI_KEY"),
-        "api_url": os.environ.get(
+        "api_key": args.api_key or os.environ.get("GIT_COMMIT_AI_KEY"),
+        "api_url": args.api_url or os.environ.get(
             "GIT_COMMIT_AI_URL", "https://openrouter.ai/api/v1/chat/completions"
         ),
-        "model": os.environ.get("GIT_COMMIT_AI_MODEL", "qwen/qwen3-coder"),
+        "model": args.model or os.environ.get("GIT_COMMIT_AI_MODEL", "qwen/qwen3-coder"),
     }
 
     debug_log(f"Config loaded - URL: {config['api_url']}, Model: {config['model']}, Key present: {bool(config['api_key'])}")
@@ -825,6 +825,13 @@ For more information, visit: https://github.com/semperai/git-commitai
         action="store_true",
         help="Enable debug logging to ~/.gitcommitai.debug.log",
     )
+
+    # Debug section arguments
+    debug_group = parser.add_argument_group('debug options', 'Override API configuration (requires --debug)')
+    debug_group.add_argument("--api-key", help="Override API key")
+    debug_group.add_argument("--api-url", help="Override API URL")
+    debug_group.add_argument("--model", help="Override model name")
+
     args = parser.parse_args()
 
     # Enable debug mode if flag is set
@@ -863,7 +870,7 @@ For more information, visit: https://github.com/semperai/git-commitai
         sys.exit(1)
 
     # Get configuration
-    config = get_env_config()
+    config = get_env_config(args)
 
     # Build the prompt
     prompt = """You are a git commit message generator. Generate ONLY the commit message without any additional text, explanations, or prefixes like 'Here's the commit message' or 'Sure'.
