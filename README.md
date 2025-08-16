@@ -181,6 +181,7 @@ Options:
   -n, --no-verify      Skip pre-commit and commit-msg hooks
   -v, --verbose        Show diff of changes in the editor
   --amend              Amend the previous commit
+  --allow-empty        Create an empty commit with no changes
   --version            Show version information
   -h, --help           Show help message
 ```
@@ -254,6 +255,31 @@ git add fixed-file.js
 git commitai --amend
 ```
 
+### Empty Commits (--allow-empty flag)
+
+```bash
+# Create an empty commit (useful for markers, triggers, or documentation)
+git commitai --allow-empty
+
+# Empty commit with context for the AI to generate appropriate message
+git commitai --allow-empty -m "Release marker for v2.0.0"
+
+# Empty commit with verbose output to see what's happening
+git commitai --allow-empty -v
+
+# Combine with other flags for CI/CD triggers
+git commitai --allow-empty -n -m "Trigger CI/CD pipeline rebuild"
+```
+
+#### Common use cases for empty commits:
+
+- **Release markers**: Mark specific release points in git history
+- **CI/CD triggers**: Trigger automated builds without code changes
+- **Documentation commits**: Document decisions or milestones without code changes
+- **Branch synchronization**: Keep branches aligned without actual changes
+- **Testing hooks**: Test git hooks or CI workflows
+
+
 ### Combining Flags
 ```bash
 # Auto-stage, skip hooks, show diff
@@ -267,6 +293,9 @@ git commitai --amend -v
 
 # Skip hooks for amend
 git commitai --amend -n
+
+# Empty commit with auto-stage check (ensures working tree is clean)
+git commitai -a --allow-empty -m "Checkpoint: all changes staged"
 ```
 
 ## 📚 Workflow Examples
@@ -348,6 +377,16 @@ git commitai --amend -m "Implement user profile feature"
 - Includes both previous commit changes and any new staged changes
 - Cannot be used with `-a` flag
 
+### `--allow-empty` - Create Empty Commit
+
+- Creates a commit even when there are no staged changes
+- Useful for creating marker commits in history
+- Perfect for triggering CI/CD pipelines without code changes
+- The AI will generate a message explaining why the empty commit is being created
+- Can be combined with all other flags
+- When used with -m, provides context for the AI to generate an appropriate message
+
+
 ## 🛠️ How It Works
 
 1. **Analyzes staged changes**: Reads `git diff --cached` to understand what changed
@@ -364,6 +403,8 @@ git commitai --amend -m "Implement user profile feature"
 - **Better results with context**: Use `-m` flag to explain WHY you made changes
 - **Model selection**: GPT-4 or Claude models generally produce better commit messages
 - **Cost optimization**: For simple changes, smaller models like `gpt-3.5-turbo` work well
+- **Use descriptive context**: Always use `-m` flag with `--allow-empty` to help the AI understand why you're creating an empty commit
+
 
 ### Workflow Tips
 - **Review large changes**: Use `-v` flag for complex commits to review while writing
