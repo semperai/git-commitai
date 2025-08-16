@@ -186,8 +186,81 @@ You can also override these settings per-command using CLI flags:
 git commitai --model "gpt-4o" --api-key "sk-..."
 
 # Test with a local LLM
-git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "llama2"
+git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "qwen2.5-coder:7b"
 ```
+
+### Running with Local LLMs (Ollama)
+
+For enhanced privacy and offline usage, you can run Git Commit AI with local LLMs using Ollama:
+
+<details>
+<summary>Setting up Ollama</summary>
+
+#### 1. Install Ollama
+
+```bash
+# macOS
+brew install ollama
+
+# Linux
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Windows
+# Download from https://ollama.ai/download
+```
+
+#### 2. Start Ollama service
+
+```bash
+# Start Ollama (if not already running)
+ollama serve
+
+# Pull a code-optimized model
+ollama pull qwen2.5-coder:7b
+
+# Verify the model is downloaded
+ollama list
+```
+
+#### 3. Configure Git Commit AI for Ollama
+
+```bash
+# Set environment variables for Ollama
+export GIT_COMMIT_AI_URL="http://localhost:11434/v1/chat/completions"
+export GIT_COMMIT_AI_MODEL="qwen2.5-coder:7b"
+export GIT_COMMIT_AI_KEY="not-needed"
+
+# Add to ~/.bashrc or ~/.zshrc to make permanent
+```
+
+#### 4. Test the setup
+
+```bash
+# Make a test commit
+git add .
+git commitai --debug  # Use debug to see the API calls
+
+# Or use per-command overrides without setting env vars
+git commitai --api-url "http://localhost:11434/v1/chat/completions" \
+             --model "qwen2.5-coder:7b" \
+             --api-key "not-needed"
+```
+
+#### Troubleshooting
+
+- **Connection refused**: Make sure Ollama is running (`ollama serve`)
+- **Model not found**: Pull the model first (`ollama pull qwen2.5-coder:7b`)
+- **Slow generation**: Try a smaller model like `llama3.2:3b` or upgrade your hardware
+- **Out of memory**: Use a smaller model or increase Ollama's memory limit
+
+#### Performance Tips
+
+- Models with "instruct" or "chat" variants typically work better for commit messages
+- Code-specific models like `qwen2.5-coder` understand diffs better
+- Run `ollama serve` in the background or as a service for convenience
+- For faster responses on limited hardware, consider `qwen2.5-coder:3b`
+
+</details>
 
 ### Commit Message Templates (.gitmessage)
 
