@@ -625,7 +625,9 @@ def create_commit_message_file(
 def open_editor(filepath, editor):
     """Open file in editor and wait for it to close."""
     try:
-        cmd = shlex.split(editor) + [filepath]
+        # Use POSIX splitting except on Windows for better compatibility
+        cmd = shlex.split(editor, posix=(os.name != "nt")) + [filepath]
+
         subprocess.run(cmd)
     except Exception:
         print(f"Error: Failed to open editor: {editor}")
