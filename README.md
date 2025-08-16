@@ -189,9 +189,9 @@ In standard `git commit`, the `-m` flag provides the entire commit message. In `
 ### Supported Providers
 
 - **OpenRouter** (Recommended) - Access to Claude, GPT-4, and many models
+- **Local LLMs** (Recommended) - Ollama, LM Studio
 - **OpenAI** - GPT-4, GPT-3.5
 - **Anthropic** - Claude models
-- **Local LLMs** - Ollama, LM Studio
 - **Any OpenAI-compatible API**
 
 ## ✨ Features
