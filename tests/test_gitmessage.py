@@ -195,6 +195,7 @@ class TestGitMessageTemplate:
                         "api_key": "test-key",
                         "api_url": "http://test-api",
                         "model": "test-model",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.read_gitmessage_template", return_value=template_content):
@@ -229,6 +230,7 @@ class TestGitMessageTemplate:
                         "api_key": "test-key",
                         "api_url": "http://test-api",
                         "model": "test-model",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.read_gitmessage_template", return_value=None):

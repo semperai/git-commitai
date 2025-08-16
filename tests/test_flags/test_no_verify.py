@@ -20,6 +20,7 @@ class TestNoVerifyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Test commit"):
@@ -54,6 +55,7 @@ class TestNoVerifyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Test commit"):
@@ -85,6 +87,7 @@ class TestNoVerifyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Amended commit"):
@@ -118,6 +121,7 @@ class TestNoVerifyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Auto-staged commit"):
@@ -169,6 +173,7 @@ class TestNoVerifyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Test") as mock_api:
@@ -198,6 +203,7 @@ class TestNoVerifyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Complex commit") as mock_api:
@@ -244,6 +250,7 @@ class TestNoVerifyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Normal commit"):
