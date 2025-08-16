@@ -113,7 +113,8 @@ mkdir -p ~/.local/bin
 cp git_commitai.py ~/.local/bin/git-commitai
 
 # Option 2: Set up git alias directly
-git config --global alias.commitai "!python3 $(pwd)/git_commitai.py"
+git config --global alias.commitai '!python3 '"$(pwd)"'/git_commitai.py'
+
 
 # Optional: Install man page
 sudo mkdir -p /usr/local/share/man/man1
@@ -147,7 +148,7 @@ pip install -r requirements.txt
 pytest
 
 # Create git alias pointing to your dev version
-git config --global alias.commitai "!python3 $(pwd)/git_commitai.py"
+git config --global alias.commitai '!python3 '"$(pwd)"'/git_commitai.py'
 ```
 </details>
 
