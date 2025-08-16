@@ -204,11 +204,10 @@ We welcome contributions! See our [Contributing Guide](CONTRIBUTING.md) for deta
 # Clone the repository
 git clone https://github.com/semperai/git-commitai.git
 cd git-commitai
-
-# Run tests
-make test
-
-# Install locally for development
+python3 -m venv venv
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+pip install -r requirements.txt
+pytest
 ./install.sh --user
 ```
 
