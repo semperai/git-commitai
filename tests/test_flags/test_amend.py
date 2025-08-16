@@ -82,8 +82,9 @@ class TestAmendFeatures:
                                                     git_commitai.main()
 
                                                     # Verify git commit --amend was called
-                                                    calls = mock_run.call_args_list
-                                                    assert any(["--amend" in str(call) for call in calls])
+                                                    calls = [c for c in mock_run.call_args_list if c.args and isinstance(c.args[0], list)]
+                                                    assert any("--amend" in c.args[0] for c in calls)
+
 
     def test_amend_first_commit(self):
         """Test --amend on the first commit (no parent)."""
