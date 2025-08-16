@@ -842,11 +842,11 @@ def read_gitmessage_template():
         git_root = get_git_root()
         repo_gitmessage = os.path.join(git_root, ".gitmessage")
         if os.path.isfile(repo_gitmessage):
-            debug_log(f"Found repository .gitmessage: {repo_gitmessage}")
+            debug_log("Found repository .gitmessage: {repo_gitmessage}")
             try:
                 with open(repo_gitmessage, 'r') as f:
                     content = f.read()
-                debug_log(f"Successfully read repository .gitmessage template")
+                debug_log("Successfully read repository .gitmessage template")
                 debug_log(f"Template content length: {len(content)} characters")
                 return content
             except (IOError, OSError) as e:
@@ -890,7 +890,7 @@ def read_gitmessage_template():
             try:
                 with open(home_gitmessage, 'r') as f:
                     content = f.read()
-                debug_log(f"Successfully read home directory .gitmessage template")
+                debug_log("Successfully read home directory .gitmessage template")
                 debug_log(f"Template content length: {len(content)} characters")
                 return content
             except (IOError, OSError) as e:
