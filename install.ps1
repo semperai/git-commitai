@@ -47,7 +47,7 @@ function Test-Administrator {
 # Check prerequisites
 function Test-Prerequisites {
     $missing = @()
-    
+
     # Check for Python
     try {
         $pythonVersion = python --version 2>&1
@@ -57,14 +57,14 @@ function Test-Prerequisites {
     } catch {
         $missing += "Python 3.8 or higher"
     }
-    
+
     # Check for Git
     try {
         git --version | Out-Null
     } catch {
         $missing += "Git"
     }
-    
+
     if ($missing.Count -gt 0) {
         Write-Color "Error: Missing required dependencies:" "Red"
         foreach ($dep in $missing) {
@@ -84,7 +84,7 @@ function Download-File {
         [string]$Url,
         [string]$Output
     )
-    
+
     try {
         Invoke-WebRequest -Uri $Url -OutFile $Output -UseBasicParsing
     } catch {
@@ -97,24 +97,24 @@ function Download-File {
 # Install for user
 function Install-User {
     Write-Color "Installing git-commitai for current user..." "Blue"
-    
+
     # Create directories
     $userBin = "$env:LOCALAPPDATA\Programs\git-commitai"
     $scriptsDir = "$env:APPDATA\Python\Scripts"
-    
+
     if (-not (Test-Path $userBin)) {
         New-Item -ItemType Directory -Path $userBin -Force | Out-Null
     }
     if (-not (Test-Path $scriptsDir)) {
         New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
     }
-    
+
     # Download Python script
     Write-Color "Downloading git-commitai..." "Yellow"
     $scriptUrl = "https://raw.githubusercontent.com/semperai/git-commitai/master/git_commitai.py"
     $scriptPath = "$userBin\git_commitai.py"
     Download-File -Url $scriptUrl -Output $scriptPath
-    
+
     # Create batch wrapper for command line
     $batchContent = @"
 @echo off
@@ -122,7 +122,7 @@ python "$scriptPath" %*
 "@
     $batchPath = "$scriptsDir\git-commitai.cmd"
     Set-Content -Path $batchPath -Value $batchContent
-    
+
     # Create PowerShell wrapper
     $ps1Content = @"
 #!/usr/bin/env pwsh
@@ -130,11 +130,11 @@ python "$scriptPath" `$args
 "@
     $ps1Path = "$scriptsDir\git-commitai.ps1"
     Set-Content -Path $ps1Path -Value $ps1Content
-    
+
     # Set up git alias
     Write-Color "Setting up git alias..." "Yellow"
     git config --global alias.commitai "!python `"$scriptPath`""
-    
+
     # Add to PATH if needed
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
     if ($currentPath -notlike "*$scriptsDir*") {
@@ -145,7 +145,7 @@ python "$scriptPath" `$args
         Write-Color "Added $scriptsDir to PATH" "Green"
         Write-Color "Please restart your terminal for PATH changes to take effect" "Yellow"
     }
-    
+
     Write-Color "✓ User installation complete!" "Green"
 }
 
@@ -156,22 +156,22 @@ function Install-System {
         Write-Color "Please run PowerShell as Administrator and try again" "Yellow"
         exit 1
     }
-    
+
     Write-Color "Installing git-commitai system-wide..." "Blue"
-    
+
     # Create directories
     $systemBin = "$env:ProgramFiles\git-commitai"
-    
+
     if (-not (Test-Path $systemBin)) {
         New-Item -ItemType Directory -Path $systemBin -Force | Out-Null
     }
-    
+
     # Download Python script
     Write-Color "Downloading git-commitai..." "Yellow"
     $scriptUrl = "https://raw.githubusercontent.com/semperai/git-commitai/master/git_commitai.py"
     $scriptPath = "$systemBin\git_commitai.py"
     Download-File -Url $scriptUrl -Output $scriptPath
-    
+
     # Create batch wrapper
     $batchContent = @"
 @echo off
@@ -179,7 +179,7 @@ python "$scriptPath" %*
 "@
     $batchPath = "$systemBin\git-commitai.cmd"
     Set-Content -Path $batchPath -Value $batchContent
-    
+
     # Add to system PATH
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
     if ($currentPath -notlike "*$systemBin*") {
@@ -189,20 +189,20 @@ python "$scriptPath" %*
         $env:Path = "$env:Path;$systemBin"
         Write-Color "Added $systemBin to PATH" "Green"
     }
-    
+
     Write-Color "✓ System installation complete!" "Green"
 }
 
 # Configure environment
 function Set-Environment {
     Write-Color "`nConfiguring environment variables..." "Blue"
-    
+
     # Check if already configured
     if ($env:GIT_COMMIT_AI_KEY) {
         Write-Color "✓ GIT_COMMIT_AI_KEY is already set" "Green"
         return
     }
-    
+
     Write-Color "You need to set up your API credentials:" "Yellow"
     Write-Host ""
     Write-Host "Select your AI provider:"
@@ -211,9 +211,9 @@ function Set-Environment {
     Write-Host "3) Anthropic Claude"
     Write-Host "4) Local LLM (Ollama)"
     Write-Host "5) Skip configuration"
-    
+
     $choice = Read-Host "Enter choice [1-5]"
-    
+
     switch ($choice) {
         "1" {
             $apiUrl = "https://openrouter.ai/api/v1/chat/completions"
@@ -248,28 +248,28 @@ function Set-Environment {
             return
         }
     }
-    
+
     # Set environment variables
     Write-Color "Setting environment variables..." "Yellow"
-    
+
     $scope = if ($System) { "Machine" } else { "User" }
-    
+
     [Environment]::SetEnvironmentVariable("GIT_COMMIT_AI_KEY", $apiKey, $scope)
     [Environment]::SetEnvironmentVariable("GIT_COMMIT_AI_URL", $apiUrl, $scope)
     [Environment]::SetEnvironmentVariable("GIT_COMMIT_AI_MODEL", $model, $scope)
-    
+
     # Also set for current session
     $env:GIT_COMMIT_AI_KEY = $apiKey
     $env:GIT_COMMIT_AI_URL = $apiUrl
     $env:GIT_COMMIT_AI_MODEL = $model
-    
+
     Write-Color "✓ Configuration saved!" "Green"
 }
 
 # Test installation
 function Test-Installation {
     Write-Color "`nTesting installation..." "Blue"
-    
+
     # Test git-commitai command
     try {
         python (Get-Command git-commitai.cmd).Source --version 2>&1 | Out-Null
@@ -277,7 +277,7 @@ function Test-Installation {
     } catch {
         Write-Color "⚠ git-commitai not accessible yet (restart terminal)" "Yellow"
     }
-    
+
     # Test git alias
     $gitAlias = git config --get alias.commitai
     if ($gitAlias) {
@@ -285,7 +285,7 @@ function Test-Installation {
     } else {
         Write-Color "⚠ git commitai alias not set" "Yellow"
     }
-    
+
     # Test API configuration
     if ($env:GIT_COMMIT_AI_KEY) {
         Write-Color "✓ API key configured" "Green"
@@ -297,22 +297,22 @@ function Test-Installation {
 # Uninstall
 function Uninstall-GitCommitAI {
     Write-Color "Uninstalling git-commitai..." "Blue"
-    
+
     # Remove user installation
     $userBin = "$env:LOCALAPPDATA\Programs\git-commitai"
     $scriptsDir = "$env:APPDATA\Python\Scripts"
-    
+
     if (Test-Path $userBin) {
         Remove-Item -Path $userBin -Recurse -Force
         Write-Color "✓ Removed user installation" "Green"
     }
-    
+
     if (Test-Path "$scriptsDir\git-commitai.cmd") {
         Remove-Item -Path "$scriptsDir\git-commitai.cmd" -Force
         Remove-Item -Path "$scriptsDir\git-commitai.ps1" -Force -ErrorAction SilentlyContinue
         Write-Color "✓ Removed command wrappers" "Green"
     }
-    
+
     # Remove system installation (if admin)
     if (Test-Administrator) {
         $systemBin = "$env:ProgramFiles\git-commitai"
@@ -321,18 +321,18 @@ function Uninstall-GitCommitAI {
             Write-Color "✓ Removed system installation" "Green"
         }
     }
-    
+
     # Remove git alias
     git config --global --unset alias.commitai 2>$null
     Write-Color "✓ Removed git alias" "Green"
-    
+
     Write-Color "Note: Environment variables were not removed" "Yellow"
     Write-Color "Uninstallation complete!" "Green"
 }
 
 # Main execution
 Write-Color "╔════════════════════════════════════╗" "Blue"
-Write-Color "║     Git Commit AI Installer        ║" "Blue"  
+Write-Color "║     Git Commit AI Installer        ║" "Blue"
 Write-Color "║         for Windows                 ║" "Blue"
 Write-Color "╚════════════════════════════════════╝" "Blue"
 Write-Host ""
