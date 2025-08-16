@@ -684,15 +684,53 @@ def create_commit_message_file(
 
     commit_file = os.path.join(git_dir, "COMMIT_EDITMSG")
 
-    with open(commit_file, "w") as f:
-        # Write the commit message (may already include AI-generated warnings as comments)
-        f.write(commit_message)
+    # Split the commit message to separate actual message from any AI-generated warnings
+    # Warnings will start with "# ⚠️  WARNING:" and should appear first in comments
+    message_lines = commit_message.split('\n')
+    actual_message = []
+    warning_comments = []
 
-        # Ensure there's a blank line before Git's standard comments
-        if not commit_message.endswith('\n\n'):
-            if not commit_message.endswith('\n'):
-                f.write('\n')
+    in_warnings = False
+    for line in message_lines:
+        # Check if this line is part of a warning
+        if (line.startswith('# ⚠️  WARNING:') or
+            line.startswith('# Found in:') or
+            line.startswith('# Details:') or
+            (in_warnings and line.startswith('#'))):
+            warning_comments.append(line)
+            in_warnings = True
+        elif line.strip() == '' and in_warnings:
+            # Empty line in warnings section
+            warning_comments.append(line)
+        elif line.strip() == '':
+            # Empty line not in warnings section
+            actual_message.append(line)
+            in_warnings = False
+        else:
+            in_warnings = False
+            actual_message.append(line)
+
+    # Reconstruct the actual commit message without warnings
+    clean_message = '\n'.join(actual_message).rstrip()
+
+    with open(commit_file, "w") as f:
+        # Write the actual commit message
+        f.write(clean_message)
+
+        # Ensure proper spacing before comments section
+        if not clean_message.endswith('\n'):
             f.write('\n')
+        f.write('\n')
+
+        # If there are AI-generated warnings, add them FIRST in the comment section
+        if warning_comments:
+            for line in warning_comments:
+                if line.strip():  # Only write non-empty lines
+                    f.write(f"{line}\n")
+                elif warning_comments.index(line) < len(warning_comments) - 1:
+                    # Write empty lines between warnings, but not at the end
+                    f.write("#\n")
+            f.write("#\n")  # Add separator after all warnings
 
         # Add Git's standard template comments
         f.write("# Please enter the commit message for your changes. Lines starting\n")
@@ -1003,37 +1041,50 @@ CRITICAL RULES YOU MUST FOLLOW:
    - "Refactor database connection logic"
    - "Remove deprecated API endpoints"
 
-5. QUALITY CHECKS:
-   After generating the message, add helpful warnings as Git-style comments (lines starting with #).
-   Check for these common issues and warn if found:
-   - Subject line over 50 characters (suggest: "# Warning: Subject line is X characters (recommended: 50 max)")
-   - Subject line with period at end (suggest: "# Warning: Remove period from end of subject line")
-   - Subject line not in imperative mood (suggest: "# Warning: Use imperative mood (e.g., 'Fix' not 'Fixed')")
-   - Body lines over 72 characters (suggest: "# Warning: Line X exceeds 72 characters")
-   - Missing blank line between subject and body
-   - Vague subject line (e.g., "Update", "Fix bug", "Changes")
-   - Typos or spelling errors if obvious
+5. CODE ISSUE DETECTION:
+   After generating the message, check the code changes for potential issues.
+   If you detect any obvious problems, add warnings as Git-style comments after the commit message.
+   These warnings help the developer catch bugs before committing.
 
-   Format warnings like Git's own comments:
-   # Warning: [specific issue]
-   # Suggestion: [how to fix it]
+   Look for these types of issues:
+   - Hardcoded secrets
+   - Syntax errors or typos in variable names
+   - null/undefined reference errors
+   - Missing imports that will cause runtime errors
+
+   Format warnings like this:
+   # ⚠️  WARNING: [Brief description of issue]
+   # Found in: [filename]
+   # Details: [Specific concern]
+
+   Example:
+   # ⚠️  WARNING: Syntax error in variable name
+   # Found in: src/auth.js
+   # Details: Line contains 'usernam = "admin"' - should be 'username = "admin"'
 
 6. OUTPUT FORMAT:
-   - Generate the commit message
+   - Generate the commit message following ALL formatting rules correctly
    - Add a blank line after the message
-   - Add any warning comments (they will be shown in editor but not included in commit)
+   - If code issues detected, add warning comments
    - NO explanations outside of warning comments
    - NO markdown formatting
-   - Example output:
-     Fix authentication bug in user login
+   - NEVER warn about commit message formatting (you should generate it correctly)
 
-     This resolves the issue where users couldn't log in
-     with special characters in their passwords.
+   Example output with warnings:
+   Fix authentication bug in user login
 
-     # Warning: Subject line could be more specific
-     # Suggestion: "Fix special character handling in login authentication"
+   # ⚠️  WARNING: Hardcoded API key detected
+   # Found in: config.js
+   # Details: Line contains 'apiKey: "sk-12345"' - use environment variables instead
+   #
+   # ⚠️  WARNING: Error handling removed
+   # Found in: auth.js
+   # Details: try/catch block deleted without replacement error handling
 
-Remember: Most commits only need a clear subject line. Only add a body when the change is complex or the reasoning isn't obvious from the code."""
+Remember:
+- Most commits only need a clear subject line
+- You are responsible for generating a properly formatted message - don't warn about your own formatting
+- Only warn about actual code issues that could cause problems"""
 
     # Add .gitmessage template context if available
     gitmessage_template = read_gitmessage_template()
