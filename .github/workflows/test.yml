@@ -61,9 +61,9 @@ jobs:
         
     - name: Test in git repository
       run: |
-        # Create a test file
-        echo "test" > test.txt
-        git add test.txt
+        # Create a test file with a different name that's not in .gitignore
+        echo "test content" > test_integration.txt
+        git add test_integration.txt
         
         # Set up mock API key
         export GIT_COMMIT_AI_KEY="test-key"
