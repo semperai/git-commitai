@@ -129,20 +129,21 @@ class TestAutoStageFlag:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "-a"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "-a"]):
+                                                    git_commitai.main()
 
-                                                # Verify check_staged_changes was called with auto_stage=True
-                                                mock_check.assert_called_once_with(
-                                                    amend=False,
-                                                    auto_stage=True,
-                                                    allow_empty=False
-                                                )
+                                                    # Verify check_staged_changes was called with auto_stage=True
+                                                    mock_check.assert_called_once_with(
+                                                        amend=False,
+                                                        auto_stage=True,
+                                                        allow_empty=False
+                                                    )
 
-                                                # Verify create_commit_message_file was called with auto_staged=True
-                                                mock_create.assert_called_once()
-                                                call_args = mock_create.call_args
-                                                assert call_args[1]["auto_staged"]
+                                                    # Verify create_commit_message_file was called with auto_staged=True
+                                                    mock_create.assert_called_once()
+                                                    call_args = mock_create.call_args
+                                                    assert call_args[1]["auto_staged"]
 
     def test_prompt_includes_auto_stage_note(self):
         """Test that the AI prompt mentions auto-staging when -a is used."""
@@ -163,14 +164,15 @@ class TestAutoStageFlag:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "-a", "-m", "context"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "-a", "-m", "context"]):
+                                                    git_commitai.main()
 
-                                                # Check that the prompt includes auto-stage note
-                                                call_args = mock_api.call_args[0]
-                                                prompt = call_args[1]
-                                                assert "Files were automatically staged using the -a flag" in prompt
-                                                assert "context" in prompt
+                                                    # Check that the prompt includes auto-stage note
+                                                    call_args = mock_api.call_args[0]
+                                                    prompt = call_args[1]
+                                                    assert "Files were automatically staged using the -a flag" in prompt
+                                                    assert "context" in prompt
 
     def test_auto_stage_only_tracked_files(self):
         """Test that -a only stages tracked files, not untracked ones."""

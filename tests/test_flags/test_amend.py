@@ -76,12 +76,13 @@ class TestAmendFeatures:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "--amend"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "--amend"]):
+                                                    git_commitai.main()
 
-                                                # Verify git commit --amend was called
-                                                calls = mock_run.call_args_list
-                                                assert any(["--amend" in str(call) for call in calls])
+                                                    # Verify git commit --amend was called
+                                                    calls = mock_run.call_args_list
+                                                    assert any(["--amend" in str(call) for call in calls])
 
     def test_amend_first_commit(self):
         """Test --amend on the first commit (no parent)."""

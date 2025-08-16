@@ -185,13 +185,14 @@ index 222..333 100644
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", ["git-commitai", "-v"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", ["git-commitai", "-v"]):
+                                                    git_commitai.main()
 
-                                                # Verify create_commit_message_file was called with verbose=True
-                                                mock_create.assert_called_once()
-                                                call_args = mock_create.call_args[1]
-                                                assert call_args["verbose"]
+                                                    # Verify create_commit_message_file was called with verbose=True
+                                                    mock_create.assert_called_once()
+                                                    call_args = mock_create.call_args[1]
+                                                    assert call_args["verbose"]
 
     def test_verbose_with_multiple_flags(self):
         """Test verbose combined with other flags."""
@@ -212,15 +213,16 @@ index 222..333 100644
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            # Combine -a, -n, -v flags
-                                            with patch("sys.argv", ["git-commitai", "-a", "-n", "-v"]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                # Combine -a, -n, -v flags
+                                                with patch("sys.argv", ["git-commitai", "-a", "-n", "-v"]):
+                                                    git_commitai.main()
 
-                                                # Verify all flags are passed correctly
-                                                call_args = mock_create.call_args[1]
-                                                assert call_args["auto_staged"]
-                                                assert call_args["no_verify"]
-                                                assert call_args["verbose"]
+                                                    # Verify all flags are passed correctly
+                                                    call_args = mock_create.call_args[1]
+                                                    assert call_args["auto_staged"]
+                                                    assert call_args["no_verify"]
+                                                    assert call_args["verbose"]
 
     def test_verbose_diff_formatting(self):
         """Test that diff lines are properly formatted as comments."""

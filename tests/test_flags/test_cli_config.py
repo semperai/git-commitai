@@ -160,19 +160,20 @@ class TestCLIConfigOverrides:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", [
-                                                "git-commitai",
-                                                "--api-key", "cli-key",
-                                                "--api-url", "https://cli-url.com",
-                                                "--model", "gpt-4"
-                                            ]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", [
+                                                    "git-commitai",
+                                                    "--api-key", "cli-key",
+                                                    "--api-url", "https://cli-url.com",
+                                                    "--model", "gpt-4"
+                                                ]):
+                                                    git_commitai.main()
 
-                                                # Verify the API was called with CLI overrides
-                                                config_used = mock_api.call_args[0][0]
-                                                assert config_used["api_key"] == "cli-key"
-                                                assert config_used["api_url"] == "https://cli-url.com"
-                                                assert config_used["model"] == "gpt-4"
+                                                    # Verify the API was called with CLI overrides
+                                                    config_used = mock_api.call_args[0][0]
+                                                    assert config_used["api_key"] == "cli-key"
+                                                    assert config_used["api_url"] == "https://cli-url.com"
+                                                    assert config_used["model"] == "gpt-4"
 
     def test_cli_overrides_with_other_flags(self):
         """Test CLI overrides combined with other git-commitai flags."""
@@ -187,30 +188,31 @@ class TestCLIConfigOverrides:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            # Combine with -a, -v, -m, and CLI overrides
-                                            with patch("sys.argv", [
-                                                "git-commitai",
-                                                "-a",
-                                                "-v",
-                                                "-m", "context message",
-                                                "--model", "claude-3.5",
-                                                "--api-key", "new-key"
-                                            ]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                # Combine with -a, -v, -m, and CLI overrides
+                                                with patch("sys.argv", [
+                                                    "git-commitai",
+                                                    "-a",
+                                                    "-v",
+                                                    "-m", "context message",
+                                                    "--model", "claude-3.5",
+                                                    "--api-key", "new-key"
+                                                ]):
+                                                    git_commitai.main()
 
-                                                # Check that other flags still work
-                                                create_args = mock_create.call_args[1]
-                                                assert create_args["auto_staged"]
-                                                assert create_args["verbose"]
+                                                    # Check that other flags still work
+                                                    create_args = mock_create.call_args[1]
+                                                    assert create_args["auto_staged"]
+                                                    assert create_args["verbose"]
 
-                                                # Check API config
-                                                config_used = mock_api.call_args[0][0]
-                                                assert config_used["model"] == "claude-3.5"
-                                                assert config_used["api_key"] == "new-key"
+                                                    # Check API config
+                                                    config_used = mock_api.call_args[0][0]
+                                                    assert config_used["model"] == "claude-3.5"
+                                                    assert config_used["api_key"] == "new-key"
 
-                                                # Check prompt includes context
-                                                prompt = mock_api.call_args[0][1]
-                                                assert "context message" in prompt
+                                                    # Check prompt includes context
+                                                    prompt = mock_api.call_args[0][1]
+                                                    assert "context message" in prompt
 
     def test_cli_overrides_with_debug(self):
         """Test that CLI overrides are logged when --debug is enabled."""
@@ -228,19 +230,20 @@ class TestCLIConfigOverrides:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("git_commitai.debug_log") as mock_debug:
-                                                with patch("sys.argv", [
-                                                    "git-commitai",
-                                                    "--debug",
-                                                    "--model", "gpt-4",
-                                                    "--api-key", "debug-key"
-                                                ]):
-                                                    git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("git_commitai.debug_log") as mock_debug:
+                                                    with patch("sys.argv", [
+                                                        "git-commitai",
+                                                        "--debug",
+                                                        "--model", "gpt-4",
+                                                        "--api-key", "debug-key"
+                                                    ]):
+                                                        git_commitai.main()
 
-                                                    # Check that debug logging was called
-                                                    debug_calls = [str(call) for call in mock_debug.call_args_list]
-                                                    # Should log configuration details
-                                                    assert any("gpt-4" in call for call in debug_calls)
+                                                        # Check that debug logging was called
+                                                        debug_calls = [str(call) for call in mock_debug.call_args_list]
+                                                        # Should log configuration details
+                                                        assert any("gpt-4" in call for call in debug_calls)
 
     def test_local_llm_configuration(self):
         """Test configuration for local LLM (common use case for CLI overrides)."""
@@ -256,19 +259,20 @@ class TestCLIConfigOverrides:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", [
-                                                "git-commitai",
-                                                "--api-url", "http://localhost:11434/v1/chat/completions",
-                                                "--model", "codellama",
-                                                "--api-key", "not-needed"
-                                            ]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", [
+                                                    "git-commitai",
+                                                    "--api-url", "http://localhost:11434/v1/chat/completions",
+                                                    "--model", "codellama",
+                                                    "--api-key", "not-needed"
+                                                ]):
+                                                    git_commitai.main()
 
-                                                # Verify local LLM configuration was used
-                                                config_used = mock_api.call_args[0][0]
-                                                assert config_used["api_url"] == "http://localhost:11434/v1/chat/completions"
-                                                assert config_used["model"] == "codellama"
-                                                assert config_used["api_key"] == "not-needed"
+                                                    # Verify local LLM configuration was used
+                                                    config_used = mock_api.call_args[0][0]
+                                                    assert config_used["api_url"] == "http://localhost:11434/v1/chat/completions"
+                                                    assert config_used["model"] == "codellama"
+                                                    assert config_used["api_key"] == "not-needed"
 
     def test_empty_cli_override_values(self):
         """Test behavior with empty CLI override values."""
@@ -334,29 +338,30 @@ class TestCLIConfigOverrides:
                                 with patch("os.path.getmtime", side_effect=[1000, 2000]):
                                     with patch("git_commitai.open_editor"):
                                         with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("sys.argv", [
-                                                "git-commitai",
-                                                "--amend",
-                                                "--allow-empty",
-                                                "--model", "gpt-4",
-                                                "--api-url", "https://custom.api.com"
-                                            ]):
-                                                git_commitai.main()
+                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
+                                                with patch("sys.argv", [
+                                                    "git-commitai",
+                                                    "--amend",
+                                                    "--allow-empty",
+                                                    "--model", "gpt-4",
+                                                    "--api-url", "https://custom.api.com"
+                                                ]):
+                                                    git_commitai.main()
 
-                                                # Verify configuration was applied
-                                                config_used = mock_api.call_args[0][0]
-                                                assert config_used["model"] == "gpt-4"
-                                                assert config_used["api_url"] == "https://custom.api.com"
+                                                    # Verify configuration was applied
+                                                    config_used = mock_api.call_args[0][0]
+                                                    assert config_used["model"] == "gpt-4"
+                                                    assert config_used["api_url"] == "https://custom.api.com"
 
-                                                # Verify git commit has both flags
-                                                commit_calls = [
-                                                    call for call in mock_run.call_args_list
-                                                    if "commit" in str(call)
-                                                ]
-                                                if commit_calls:
-                                                    last_call = commit_calls[-1]
-                                                    assert "--amend" in last_call[0][0]
-                                                    assert "--allow-empty" in last_call[0][0]
+                                                    # Verify git commit has both flags
+                                                    commit_calls = [
+                                                        call for call in mock_run.call_args_list
+                                                        if "commit" in str(call)
+                                                    ]
+                                                    if commit_calls:
+                                                        last_call = commit_calls[-1]
+                                                        assert "--amend" in last_call[0][0]
+                                                        assert "--allow-empty" in last_call[0][0]
 
     def test_help_text_includes_cli_overrides(self):
         """Test that --help includes information about CLI override options."""
@@ -373,7 +378,7 @@ class TestCLIConfigOverrides:
                 assert "--api-url" in output
                 assert "--model" in output
                 assert "Override API key" in output
-                assert "Override API URL" in output  # Changed from "Override API endpoint"
+                assert "Override API URL" in output
                 assert "Override model name" in output
 
     def test_api_request_uses_overridden_config(self):
