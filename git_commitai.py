@@ -59,7 +59,7 @@ def stage_all_tracked_files():
         return False
 
 
-def check_staged_changes(amend=False, auto_stage=False):
+def check_staged_changes(amend=False, auto_stage=False, allow_empty=False):
     """Check if there are staged changes and provide git-like output if not."""
     if auto_stage and not amend:
         # First, check if there are any changes to stage
@@ -83,6 +83,10 @@ def check_staged_changes(amend=False, auto_stage=False):
         except:
             print("fatal: You have nothing to amend.")
             return False
+
+    # If --allow-empty is set, we can proceed even without staged changes
+    if allow_empty:
+        return True
 
     try:
         result = subprocess.run(
@@ -281,7 +285,7 @@ def get_binary_file_info(filename, amend=False):
     )
 
 
-def get_staged_files(amend=False):
+def get_staged_files(amend=False, allow_empty=False):
     """Get list of staged files with their staged contents."""
     if amend:
         # For --amend, get files from the last commit plus any newly staged files
@@ -304,6 +308,8 @@ def get_staged_files(amend=False):
         files_output = run_command("git diff --cached --name-only").strip()
 
     if not files_output:
+        if allow_empty:
+            return "# No files changed (empty commit)"
         return ""
 
     all_files = []
@@ -359,10 +365,10 @@ def get_staged_files(amend=False):
                 # File might be newly added or have other issues, skip it
                 continue
 
-    return "\n".join(all_files)
+    return "\n".join(all_files) if all_files else "# No files changed (empty commit)"
 
 
-def get_git_diff(amend=False):
+def get_git_diff(amend=False, allow_empty=False):
     """Get the git diff of staged changes, with binary file handling."""
     if amend:
         # For --amend, show the diff of the last commit plus any new staged changes
@@ -384,6 +390,9 @@ def get_git_diff(amend=False):
             diff = run_command("git diff --cached").strip()
     else:
         diff = run_command("git diff --cached").strip()
+
+    if not diff and allow_empty:
+        return "```\n# No changes (empty commit)\n```"
 
     # Process the diff to add information about binary files
     diff_lines = diff.split("\n") if diff else []
@@ -496,6 +505,7 @@ def create_commit_message_file(
     auto_staged=False,
     no_verify=False,
     verbose=False,
+    allow_empty=False,
 ):
     """Create the commit message file with git template."""
     commit_file = os.path.join(git_dir, "COMMIT_EDITMSG")
@@ -514,6 +524,9 @@ def create_commit_message_file(
             f.write("#\n")
         if no_verify:
             f.write("# Git hooks will be skipped (--no-verify).\n")
+            f.write("#\n")
+        if allow_empty:
+            f.write("# This will be an empty commit (--allow-empty).\n")
             f.write("#\n")
         f.write(f"# On branch {get_current_branch()}\n")
         f.write("#\n")
@@ -541,6 +554,9 @@ def create_commit_message_file(
                 for line in staged_status.split("\n"):
                     if line:
                         f.write(f"# {line}\n")
+        elif allow_empty:
+            # For empty commits, note that there are no changes
+            f.write("# No changes to be committed (empty commit)\n")
         else:
             f.write("# Changes to be committed:\n")
             # Get staged files status
@@ -580,6 +596,8 @@ def create_commit_message_file(
             if diff_output:
                 for line in diff_output.split("\n"):
                     f.write(f"# {line}\n")
+            elif allow_empty:
+                f.write("# No changes (empty commit)\n")
 
     return commit_file
 
@@ -628,6 +646,7 @@ Examples:
   git-commitai -n                 # Skip git hooks (pre-commit, commit-msg)
   git-commitai -v                 # Show diff in editor below commit message
   git-commitai -a -n -v           # Combine multiple flags
+  git-commitai --allow-empty      # Create an empty commit
 
 Environment variables:
   GIT_COMMIT_AI_KEY     Your API key (required)
@@ -659,7 +678,12 @@ For more information, visit: https://github.com/semperai/git-commitai
         action="store_true",
         help="Show diff of changes in the editor",
     )
-    parser.add_argument("--version", action="version", version="git-commitai 1.0.4")
+    parser.add_argument(
+        "--allow-empty",
+        action="store_true",
+        help="Allow creating an empty commit",
+    )
+    parser.add_argument("--version", action="version", version="git-commitai 1.0.5")
     args = parser.parse_args()
 
     # Check if in a git repository first
@@ -679,8 +703,8 @@ For more information, visit: https://github.com/semperai/git-commitai
         )
         sys.exit(1)
 
-    # Check for staged changes or if we're amending or auto-staging
-    if not check_staged_changes(amend=args.amend, auto_stage=args.all):
+    # Check for staged changes or if we're amending or auto-staging or allowing empty
+    if not check_staged_changes(amend=args.amend, auto_stage=args.all, allow_empty=args.allow_empty):
         sys.exit(1)
 
     # Get configuration
@@ -703,9 +727,12 @@ Do not include any conversational text, only the commit message itself."""
     if args.no_verify:
         prompt += "\n\nNote: Git hooks will be skipped for this commit (--no-verify)."
 
+    if args.allow_empty:
+        prompt += "\n\nNote: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created."
+
     # Get git information
-    git_diff = get_git_diff(amend=args.amend)
-    all_files = get_staged_files(amend=args.amend)
+    git_diff = get_git_diff(amend=args.amend, allow_empty=args.allow_empty)
+    all_files = get_staged_files(amend=args.amend, allow_empty=args.allow_empty)
 
     prompt += f"""
 
@@ -731,6 +758,7 @@ Here are all of the files for context:
         auto_staged=args.all,
         no_verify=args.no_verify,
         verbose=args.verbose,
+        allow_empty=args.allow_empty,
     )
 
     # Get modification time before editing
@@ -762,6 +790,9 @@ Here are all of the files for context:
 
         if args.no_verify:
             commit_cmd.append("--no-verify")
+
+        if args.allow_empty:
+            commit_cmd.append("--allow-empty")
 
         commit_cmd.extend(["-F", commit_file])
 
