@@ -903,16 +903,48 @@ For more information, visit: https://github.com/semperai/git-commitai
     # Get configuration
     config = get_env_config(args)
 
-    # Build the prompt
-    prompt = """You are a git commit message generator. Generate ONLY the commit message without any additional text, explanations, or prefixes like 'Here's the commit message' or 'Sure'.
+    # Build the improved prompt with Git best practices
+    prompt = """You are a git commit message generator that follows Git best practices strictly.
 
-The first line should be a concise summary (50 characters or less if possible).
-If needed, add a blank line and then a more detailed explanation.
-Focus on WHAT changed and WHY it changed.
-Do not include any conversational text, only the commit message itself."""
+CRITICAL RULES YOU MUST FOLLOW:
+
+1. STRUCTURE:
+   - If the change is simple and clear, use ONLY a subject line (single line commit)
+   - For complex changes that need explanation, use subject + blank line + body
+   - Never add a body unless it provides valuable context about WHY the change was made
+
+2. SUBJECT LINE (FIRST LINE):
+   - Maximum 50 characters (aim for less when possible)
+   - Start with a capital letter
+   - NO period at the end
+   - Use imperative mood (e.g., "Add", "Fix", "Update", not "Added", "Fixes", "Updated")
+   - Be concise but descriptive
+   - Think: "If applied, this commit will [your subject line]"
+
+3. BODY (ONLY if needed):
+   - Leave one blank line after the subject
+   - Wrap lines at 72 characters maximum
+   - Explain WHAT changed and WHY, not HOW (the code shows how)
+   - Focus on the motivation and context for the change
+   - Use bullet points with "-" for multiple items if needed
+
+4. GOOD SUBJECT LINE EXAMPLES:
+   - "Add user authentication module"
+   - "Fix memory leak in data processor"
+   - "Update dependencies to latest versions"
+   - "Refactor database connection logic"
+   - "Remove deprecated API endpoints"
+
+5. OUTPUT FORMAT:
+   - Generate ONLY the commit message
+   - NO explanations, NO prefixes like "Here's the commit message"
+   - NO markdown formatting
+   - Just the raw commit message text
+
+Remember: Most commits only need a clear subject line. Only add a body when the change is complex or the reasoning isn't obvious from the code."""
 
     if args.message:
-        prompt += f"\n\nUser context about this commit: {args.message}"
+        prompt += f"\n\nAdditional context from user: {args.message}"
 
     if args.all:
         prompt += "\n\nNote: Files were automatically staged using the -a flag."
@@ -929,13 +961,15 @@ Do not include any conversational text, only the commit message itself."""
 
     prompt += f"""
 
-Here is the git diff:
+Here is the git diff of changes:
 
 {git_diff}
 
-Here are all of the files for context:
+Here are all the modified files with their content for context:
 
-{all_files}"""
+{all_files}
+
+Generate the commit message following the rules above:"""
 
     # Make API request with retry logic
     commit_message = make_api_request(config, prompt)
