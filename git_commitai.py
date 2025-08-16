@@ -21,6 +21,8 @@ MAX_RETRIES = 3
 RETRY_DELAY = 2  # seconds between retries
 RETRY_BACKOFF = 1.5  # backoff multiplier for each retry
 
+REQ_TIMEOUT = 300  # 5 minutes timeout for requests
+
 
 def redact_secrets(message):
     """Redact sensitive information from debug messages."""
@@ -934,7 +936,7 @@ def make_api_request(config, message):
                 headers=headers,
             )
 
-            with urlopen(req) as response:
+            with urlopen(req, timeout=REQ_TIMEOUT) as response:
                 data = json.loads(response.read().decode("utf-8"))
                 result = data["choices"][0]["message"]["content"]
                 debug_log(f"API request successful on attempt {attempt}, response length: {len(result)} characters")
