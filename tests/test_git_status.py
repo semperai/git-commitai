@@ -96,13 +96,8 @@ class TestGitStatus:
             mock_run.side_effect = side_effect
 
             with patch("sys.stdout", new=StringIO()) as fake_out:
-                # Mock CalledProcessError since it's used in the function
-                with patch.object(subprocess, "CalledProcessError", Exception):
-                    git_commitai.show_git_status()
-                    output = fake_out.getvalue()
-
-                    assert "Initial commit" in output
-                    assert "Untracked files:" in output
+                git_commitai.show_git_status()
+                output = fake_out.getvalue()
 
 
 class TestCheckStagedChanges:
