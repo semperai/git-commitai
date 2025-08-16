@@ -354,13 +354,20 @@ def is_commit_message_empty(filepath):
     try:
         with open(filepath, 'r') as f:
             for line in f:
-                # Skip comments and empty lines
-                line = line.strip()
-                if line and not line.startswith('#'):
+                # Strip only trailing whitespace to preserve intentional indentation
+                line = line.rstrip('\n\r')
+                # Skip empty lines
+                if not line or not line.strip():
+                    continue
+                # Check if this line is a comment (accounting for leading whitespace)
+                if not line.lstrip().startswith('#'):
+                    # Found actual content (non-comment, non-empty line)
                     return False
         return True
-    except:
+    except (IOError, OSError) as e:
+        # More specific exception handling to avoid bare except
         return True
+
 
 def main():
     parser = argparse.ArgumentParser(
