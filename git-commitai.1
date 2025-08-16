@@ -1,386 +1,235 @@
 .\" Manpage for git-commitai
-.\" Contact: https://github.com/semperai/git-commitai/issues
-.TH GIT-COMMITAI 1 "January 2025" "1.0.6" "Git Commit AI Manual"
+.\" Contact: https://github.com/semperai/git-commitai
+.TH GIT-COMMITAI 1 "2024" "1.0.0" "Git Commit AI Manual"
 
 .SH NAME
-git\-commitai \- Generate intelligent git commit messages using AI
+git-commitai \- Generate AI-powered git commit messages
 
 .SH SYNOPSIS
 .B git commitai
-[\fI\-a\fR]
-[\fI\-m\fR \fImessage\fR]
-[\fI\-n\fR]
-[\fI\-v\fR]
-[\fI\-\-amend\fR]
-[\fI\-\-allow\-empty\fR]
-[\fI\-\-debug\fR]
-[\fI\-\-api\-key\fR \fIkey\fR]
-[\fI\-\-api\-url\fR \fIurl\fR]
-[\fI\-\-model\fR \fIname\fR]
-[\fI\-\-help\fR]
+[\fB\-a\fR|\fB\-\-all\fR]
+[\fB\-m\fR|\fB\-\-message\fR \fIcontext\fR]
+[\fB\-\-amend\fR]
+[\fB\-n\fR|\fB\-\-no\-verify\fR]
+[\fB\-v\fR|\fB\-\-verbose\fR]
+[\fB\-\-allow\-empty\fR]
+[\fB\-\-debug\fR]
+[\fB\-\-api\-key\fR \fIkey\fR]
+[\fB\-\-api\-url\fR \fIurl\fR]
+[\fB\-\-model\fR \fIname\fR]
+[\fB\-h\fR|\fB\-\-help\fR]
 
 .SH DESCRIPTION
-.B git\-commitai
-analyzes your staged git changes and generates meaningful, conventional commit messages using AI. It integrates seamlessly with your existing git workflow, supporting the same flags as
-.BR git\-commit (1)
-while adding AI-powered message generation.
+.B git-commitai
+analyzes your staged git changes and generates meaningful, conventional commit messages using AI.
+It works as a drop-in replacement for \fBgit commit\fR, supporting many of the same flags while adding AI-powered message generation.
 
-The tool examines your code changes, understands the context, and creates descriptive commit messages following best practices. It automatically detects and uses your \fB.gitmessage\fR template files to follow project-specific commit conventions. After generating a message, it opens your configured git editor for review and modification before committing.
+The tool examines both the diff and full file contents to understand the context of your changes,
+then generates a commit message following Git best practices and any project-specific conventions defined in \fB.gitmessage\fR templates.
 
 .SH OPTIONS
-.SS Standard Git Commit Options
-These options work the same as in \fBgit commit\fR:
-
-.TP
-.BR \-a ", " \-\-all
-Automatically stage all tracked, modified files before committing. This stages files that Git already knows about and have been modified or deleted, but does NOT add untracked files. Equivalent to \fBgit add \-u\fR before committing.
-Cannot be used with \fB\-\-amend\fR.
-
-.TP
-.BR \-n ", " \-\-no\-verify
-Skip pre-commit and commit-msg hooks. Useful for work-in-progress commits, emergency fixes, or when hooks are causing issues. Use with caution as hooks often enforce important project standards.
-
-.TP
-.BR \-v ", " \-\-verbose
-Display the full diff of changes below the commit message in the editor. The diff appears after a scissors line and is not included in the commit. Helpful for reviewing complex changes while writing the message.
-
-.TP
-.B \-\-amend
-Replace the most recent commit with a new one. Generates a new AI message based on all changes (previous commit plus any newly staged changes). Cannot be used with \fB\-a\fR flag.
-
-.TP
-.B \-\-allow\-empty
-Create a commit even when there are no staged changes. Useful for creating marker commits, triggering CI/CD pipelines, or documenting milestones. The AI will generate an appropriate message explaining the empty commit.
-
 .SS Git Commit AI Specific Options
-These options are unique to git-commitai:
+.TP
+.BR \-m ", " \-\-message " " \fIcontext\fR
+Provide additional context about the commit to help the AI understand your intent.
+Unlike standard \fBgit commit\fR where this sets the entire message, in \fBgit-commitai\fR this provides context for AI message generation.
 
 .TP
-.BR \-m " " \fImessage\fR ", " \-\-message " " \fImessage\fR
-\fB(Modified behavior)\fR Provide additional context about the commit to help the AI generate a more accurate message. Unlike standard \fBgit commit\fR where this provides the entire message, in git-commitai this context is used to understand the intent behind the changes but is not included in the final commit message.
-
-.TP
-.B \-\-debug
-Enable debug logging to \fI~/.gitcommitai.debug.log\fR. This logs all git commands, API requests, file processing, template loading, and decision points. Useful for troubleshooting issues or understanding what the tool is doing internally. Debug output is also printed to stderr for immediate feedback.
+.BR \-\-debug
+Enable debug mode. Outputs detailed logging information to stderr for troubleshooting.
+Shows git commands, API requests, and decision points. Redirect stderr to a file to capture debug output.
 
 .TP
 .BR \-\-api\-key " " \fIkey\fR
-Override the API key for this command. This temporarily overrides the \fBGIT_COMMIT_AI_KEY\fR environment variable. Useful for testing different API providers or switching between accounts without modifying environment variables.
+Override the API key for this commit only.
+Overrides the \fBGIT_COMMIT_AI_KEY\fR environment variable.
 
 .TP
 .BR \-\-api\-url " " \fIurl\fR
-Override the API endpoint URL for this command. This temporarily overrides the \fBGIT_COMMIT_AI_URL\fR environment variable. Useful for testing local models, different providers, or custom endpoints.
+Override the API endpoint URL for this commit.
+Useful for testing different providers or local models.
+Overrides the \fBGIT_COMMIT_AI_URL\fR environment variable.
 
 .TP
 .BR \-\-model " " \fIname\fR
-Override the AI model name for this command. This temporarily overrides the \fBGIT_COMMIT_AI_MODEL\fR environment variable. Allows testing different models or using specialized models for specific types of commits.
+Override the AI model name for this commit.
+Overrides the \fBGIT_COMMIT_AI_MODEL\fR environment variable.
+
+.SS Standard Git Commit Options (Supported)
+.TP
+.BR \-a ", " \-\-all
+Automatically stage all tracked, modified files before committing.
+Equivalent to running \fBgit add -u\fR before the commit.
+Cannot be used with \fB--amend\fR.
+
+.TP
+.BR \-\-amend
+Replace the tip of the current branch by creating a new commit with a new message.
+The previous commit's changes are included.
+
+.TP
+.BR \-n ", " \-\-no\-verify
+Skip pre-commit and commit-msg hooks.
+
+.TP
+.BR \-v ", " \-\-verbose
+Show the diff of changes in the commit message editor.
+The diff is displayed as comments after the commit message template.
+
+.TP
+.BR \-\-allow\-empty
+Allow creating a commit with no changes.
+Useful for triggering CI/CD pipelines or creating marker commits.
 
 .TP
 .BR \-h ", " \-\-help
-Display this help message and exit.
+Display help information and exit.
 
-.SH COMMIT MESSAGE TEMPLATES
-.B git\-commitai
-automatically detects and uses \fB.gitmessage\fR template files to understand your project's commit message conventions. This helps generate messages that match your team's style guide while still following Git best practices.
-
-.SS Template Detection Order
-The tool searches for templates in the following order (first found wins):
-
-.IP 1. 4
-\fBGit config template\fR \- Set via \fBgit config commit.template\fR
-.IP 2. 4
-\fBRepository template\fR \- \fI.gitmessage\fR file in the repository root
-.IP 3. 4
-\fBGlobal template\fR \- \fI~/.gitmessage\fR file in your home directory
-
-.SS Creating a Template
-Create a \fI.gitmessage\fR file with your project's commit guidelines:
-
-.PP
-.nf
-# Example .gitmessage template
-# Format: <type>(<scope>): <subject>
-#
-# <type> must be one of:
-#   feat: A new feature
-#   fix: A bug fix
-#   docs: Documentation changes
-#   style: Code style changes
-#   refactor: Code refactoring
-#   test: Adding or updating tests
-#   chore: Maintenance tasks
-#
-# <scope> is optional and indicates the module affected
-#
-# Example: feat(auth): Add OAuth2 login support
-.fi
-
-.SS Setting a Template
-.PP
-.nf
-# Set a global template
-$ git config \-\-global commit.template ~/.gitmessage
-
-# Set a repository-specific template
-$ git config commit.template .github/commit\-template
-
-# Or simply create .gitmessage in your repository root
-$ vim .gitmessage
-.fi
-
-When a template is found, git\-commitai uses it as additional context to generate messages that follow your conventions. The AI will respect your project's format while ensuring the message still adheres to Git best practices (imperative mood, proper capitalization, etc.).
-
-.SH ENVIRONMENT VARIABLES
+.SH ENVIRONMENT
 .TP
 .B GIT_COMMIT_AI_KEY
-\fB(Required)\fR Your API key for the AI service. Must be set before using git-commitai unless overridden with \fB\-\-api\-key\fR.
+Your API key for the AI service (required).
+Can be overridden with \fB--api-key\fR.
 
 .TP
 .B GIT_COMMIT_AI_URL
-The API endpoint URL for your AI provider. Defaults to OpenRouter if not set. Can be overridden with \fB\-\-api\-url\fR.
-.br
+The API endpoint URL.
 Default: \fIhttps://openrouter.ai/api/v1/chat/completions\fR
+Can be overridden with \fB--api-url\fR.
 
 .TP
 .B GIT_COMMIT_AI_MODEL
-The AI model to use for generating commit messages. Can be overridden with \fB\-\-model\fR.
-.br
+The AI model to use for generation.
 Default: \fIqwen/qwen3-coder\fR
+Can be overridden with \fB--model\fR.
 
 .TP
-.B GIT_EDITOR
-The editor to use for editing commit messages. Falls back to EDITOR, then git's core.editor config, then vi.
+.B GIT_EDITOR, EDITOR
+The editor to use for editing commit messages.
+Falls back to git's configured editor or \fBvi\fR.
+
+.SH TEMPLATE FILES
+Git Commit AI automatically detects and uses \fB.gitmessage\fR template files to understand your project's commit conventions.
+The tool looks for templates in this order (first found wins):
+
+.IP 1. 4
+Git config template: Set via \fBgit config commit.template\fR
+.IP 2. 4
+Repository template: \fB.gitmessage\fR in your repository root
+.IP 3. 4
+Global template: \fB~/.gitmessage\fR in your home directory
+
+When a template is found, it's used as additional context to help generate messages that follow your project's conventions.
 
 .SH EXAMPLES
 .SS Basic Usage
-Stage your changes and generate a commit message:
-.PP
 .nf
-$ git add file.js
+# Generate commit message for staged changes
+$ git add file.py
 $ git commitai
+
+# Provide context for better messages
+$ git commitai -m "Refactored auth system for JWT"
+
+# Auto-stage and commit tracked files
+$ git commitai -a
 .fi
 
-.SS With Additional Context
-Provide context to help the AI understand your changes:
-.PP
+.SS Advanced Usage
 .nf
-$ git commitai \-m "Refactored the authentication system for better security"
+# Amend the previous commit with a new AI-generated message
+$ git commitai --amend
+
+# Create an empty commit (e.g., for CI triggers)
+$ git commitai --allow-empty -m "Trigger deployment"
+
+# Skip git hooks
+$ git commitai -n
+
+# Show diff in editor
+$ git commitai -v
 .fi
 
-.SS Using with .gitmessage Template
-Create a template and let the AI follow your conventions:
-.PP
+.SS API Configuration
 .nf
-# Create a project template
-$ cat > .gitmessage << 'EOF'
-# Type: feat|fix|docs|style|refactor|test|chore
-# Scope: (optional) affected module
-# Subject: imperative mood description
-EOF
-
-# The AI will detect and use this template automatically
-$ git add src/auth.js
-$ git commitai
-# Generated message: "feat(auth): Add JWT token validation"
-.fi
-
-.SS Auto-stage and Commit
-Automatically stage all modified tracked files:
-.PP
-.nf
-$ vim existing\-file.py
-$ git commitai \-a
-.fi
-
-.SS Skip Hooks
-Bypass pre-commit and commit-msg hooks:
-.PP
-.nf
-$ git commitai \-n
-$ git commitai \-a \-n \-m "WIP: experimental feature"
-.fi
-
-.SS Verbose Mode
-Review changes while writing the commit message:
-.PP
-.nf
-$ git commitai \-v
-$ git commitai \-a \-v
-.fi
-
-.SS Amend Previous Commit
-Replace the last commit with a new message:
-.PP
-.nf
-$ git commitai \-\-amend
-$ git commitai \-\-amend \-m "Fixed the bug properly this time"
-.fi
-
-.SS Empty Commits
-Create a commit with no changes:
-.PP
-.nf
-$ git commitai \-\-allow\-empty \-m "Trigger CI pipeline rebuild"
-$ git commitai \-\-allow\-empty \-m "Release marker for v2.0.0"
-.fi
-
-.SS Override API Configuration
-Use different models or providers for specific commits:
-.PP
-.nf
-# Try a different model
-$ git commitai \-\-model "gpt\-4o"
+# Use a different model for this commit
+$ git commitai --model "gpt-4o" --api-key "sk-..."
 
 # Use a local LLM
-$ git commitai \-\-api\-url "http://localhost:11434/v1/chat/completions" \\
-              \-\-model "codellama" \-\-api\-key "not\-needed"
+$ git commitai --api-url "http://localhost:11434/v1/chat/completions" \\
+              --model "codellama"
 
-# Switch to Claude for complex refactoring
-$ git commitai \-\-model "claude\-3.5\-sonnet" \\
-              \-\-api\-key "sk\-ant\-..." \\
-              \-\-api\-url "https://api.anthropic.com/v1/messages"
-
-# Test with a different API key
-$ git commitai \-\-api\-key "sk\-different\-key\-..."
+# Test with Claude via Anthropic
+$ git commitai --api-url "https://api.anthropic.com/v1/messages" \\
+              --model "claude-3-opus" \\
+              --api-key "sk-ant-..."
 .fi
 
-.SS Debug Mode
-Enable debug logging for troubleshooting:
-.PP
+.SS Debugging
 .nf
-$ git commitai \-\-debug
-$ git commitai \-\-debug \-a \-m "Debug auto-staging"
+# Enable debug mode (outputs to stderr)
+$ git commitai --debug
 
-# Debug with API overrides
-$ git commitai \-\-debug \-\-model "gpt\-4" \-\-api\-key "sk\-..."
+# Capture debug output to a file
+$ git commitai --debug 2> debug.log
 
-# View debug log
-$ cat ~/.gitcommitai.debug.log
+# View debug output on screen and save to file
+$ git commitai --debug 2>&1 | tee debug.log
 
-# Watch log in real-time
-$ tail \-f ~/.gitcommitai.debug.log
+# Debug with other options
+$ git commitai --debug -a -v 2> debug.log
 .fi
 
-.SS Combining Flags
-Multiple flags can be combined:
-.PP
+.SS Using Templates
 .nf
-$ git commitai \-a \-n \-v
-$ git commitai \-\-amend \-v \-\-debug
-$ git commitai \-\-allow\-empty \-n
-$ git commitai \-\-debug \-\-model "gpt\-4" \-a \-v
+# Create a project-specific commit template
+$ cat > .gitmessage << 'EOF'
+# Format: <type>(<scope>): <subject>
+# Types: feat, fix, docs, style, refactor, test, chore
+EOF
+
+# Git Commit AI will automatically use this template
+$ git add .
+$ git commitai
+# Generated message follows template format
 .fi
-
-.SH PROVIDER CONFIGURATION
-Configuration can be set via environment variables or overridden per-command with CLI flags.
-
-.SS OpenRouter (Recommended)
-.nf
-# Environment variables (persistent)
-export GIT_COMMIT_AI_KEY="sk\-or\-v1\-..."
-export GIT_COMMIT_AI_URL="https://openrouter.ai/api/v1/chat/completions"
-export GIT_COMMIT_AI_MODEL="anthropic/claude\-3.5\-sonnet"
-
-# Or override per-command
-git commitai \-\-api\-key "sk\-or\-v1\-..." \\
-            \-\-model "anthropic/claude\-3.5\-sonnet"
-.fi
-
-.SS OpenAI
-.nf
-# Environment variables
-export GIT_COMMIT_AI_KEY="sk\-..."
-export GIT_COMMIT_AI_URL="https://api.openai.com/v1/chat/completions"
-export GIT_COMMIT_AI_MODEL="gpt\-4o"
-
-# Or override per-command
-git commitai \-\-api\-url "https://api.openai.com/v1/chat/completions" \\
-            \-\-model "gpt\-4o" \-\-api\-key "sk\-..."
-.fi
-
-.SS Anthropic Claude
-.nf
-# Environment variables
-export GIT_COMMIT_AI_KEY="sk\-ant\-..."
-export GIT_COMMIT_AI_URL="https://api.anthropic.com/v1/messages"
-export GIT_COMMIT_AI_MODEL="claude\-3\-opus\-20240229"
-
-# Or override per-command
-git commitai \-\-api\-url "https://api.anthropic.com/v1/messages" \\
-            \-\-model "claude\-3\-opus\-20240229" \\
-            \-\-api\-key "sk\-ant\-..."
-.fi
-
-.SS Local LLMs (Ollama)
-.nf
-# Environment variables
-export GIT_COMMIT_AI_KEY="not\-needed"
-export GIT_COMMIT_AI_URL="http://localhost:11434/v1/chat/completions"
-export GIT_COMMIT_AI_MODEL="llama2"
-
-# Or override per-command
-git commitai \-\-api\-url "http://localhost:11434/v1/chat/completions" \\
-            \-\-model "llama2" \-\-api\-key "not\-needed"
-.fi
-
-.SH HOW IT WORKS
-.IP 1. 4
-Checks for \fB.gitmessage\fR template files to understand project conventions
-.IP 2. 4
-Analyzes staged changes using \fBgit diff \-\-cached\fR
-.IP 3. 4
-Detects file types and handles binary files appropriately
-.IP 4. 4
-Gathers full file contents for better context understanding
-.IP 5. 4
-Sends the context and template (if found) to your configured AI model
-.IP 6. 4
-Generates a message following both Git best practices and your project conventions
-.IP 7. 4
-Opens your git editor with the generated message
-.IP 8. 4
-Commits on save, aborts on quit without saving
 
 .SH DEBUGGING
-When the \fB\-\-debug\fR flag is enabled, git-commitai logs detailed information about its operation to \fI~/.gitcommitai.debug.log\fR. This includes:
+When the \fB--debug\fR flag is enabled, detailed logging information is output to stderr. This includes:
 
 .IP \(bu 2
-All git commands executed and their results
+All git commands executed
+.IP \(bu 2
+API request and response details
+.IP \(bu 2
+File processing information
+.IP \(bu 2
+Configuration and environment details
 .IP \(bu 2
 Template file detection and loading
 .IP \(bu 2
-API request details (URL, model, prompt size, response size)
-.IP \(bu 2
-API configuration source (environment variable vs CLI override)
-.IP \(bu 2
-File processing information (which files are staged, binary detection)
-.IP \(bu 2
-Configuration loading and environment variables (keys are not logged)
-.IP \(bu 2
-Editor operations and user interactions
-.IP \(bu 2
-Decision points and error conditions
+Error messages and stack traces
 
-The debug log persists between runs, allowing you to review historical issues. When reporting bugs, include the relevant portions of the debug log to help maintainers diagnose the problem.
+To capture debug output, redirect stderr to a file:
+.nf
+$ git commitai --debug 2> debug.log
+.fi
 
-.SH EDITOR INTEGRATION
-The tool uses your configured git editor. Common editor commands:
+Or view it on screen while saving to a file:
+.nf
+$ git commitai --debug 2>&1 | tee debug.log
+.fi
+
+When reporting bugs, include relevant portions of the debug output.
+
+.SH FILES
+.TP
+.B .gitmessage
+Project-specific or global commit message template file.
 
 .TP
-.B vim
-\fI:wq\fR to save and commit, \fI:q!\fR to abort
-
-.TP
-.B nano
-\fICtrl+O, Enter, Ctrl+X\fR to save and commit, \fICtrl+X\fR to abort
-
-.TP
-.B emacs
-\fICtrl+X Ctrl+S, Ctrl+X Ctrl+C\fR to save and commit
-
-.TP
-.B VS Code
-\fICtrl+S, Ctrl+W\fR (or Cmd on Mac) to save and commit
+.B .git/COMMIT_EDITMSG
+Temporary file containing the commit message being edited.
 
 .SH EXIT STATUS
 .TP
@@ -389,85 +238,57 @@ Successful commit
 
 .TP
 .B 1
-General error or commit aborted by user
+General error or commit aborted
 
 .TP
 .B 128
 Not in a git repository
 
-.SH FILES
-.TP
-.I ~/.bashrc, ~/.zshrc
-Shell configuration files where environment variables should be set
+.SH SUPPORTED PROVIDERS
+Git Commit AI works with any OpenAI-compatible API endpoint:
 
-.TP
-.I ~/.gitcommitai.debug.log
-Debug log file (created when \fB\-\-debug\fR is used)
+.IP \(bu 2
+\fBOpenRouter\fR (recommended) - Access to multiple models
+.IP \(bu 2
+\fBLocal LLMs\fR - Ollama, LM Studio, etc.
+.IP \(bu 2
+\fBOpenAI\fR - GPT-4, GPT-3.5
+.IP \(bu 2
+\fBAnthropic\fR - Claude models
+.IP \(bu 2
+Any OpenAI-compatible API
 
-.TP
-.I .git/COMMIT_EDITMSG
-Temporary file containing the commit message during editing
+.SH LIMITATIONS
+The following standard \fBgit commit\fR options are not yet supported:
 
-.TP
-.I .gitmessage
-Project-specific commit message template (repository root)
+.IP \(bu 2
+\fB--interactive\fR, \fB--patch\fR - Interactive staging
+.IP \(bu 2
+\fB-s\fR, \fB--signoff\fR - Signed-off-by trailer
+.IP \(bu 2
+\fB-c\fR, \fB-C\fR - Reuse commit messages
+.IP \(bu 2
+\fB--squash\fR, \fB--fixup\fR - Autosquash commits
+.IP \(bu 2
+\fB-F\fR, \fB--file\fR - Read message from file
+.IP \(bu 2
+\fB--author\fR, \fB--date\fR - Override commit metadata
+.IP \(bu 2
+\fB-S\fR, \fB--gpg-sign\fR - GPG signing
+.IP \(bu 2
+Path specifications after \fB--\fR
 
-.TP
-.I ~/.gitmessage
-Global commit message template
-
-.TP
-.I .git/config
-Repository-specific git configuration (may reference template file)
-
-.TP
-.I ~/.gitconfig
-Global git configuration (may reference template file)
-
-.SH NOTES
-.IP \(bu 2
-The \fB\-a\fR flag only stages tracked files, not new untracked files
-.IP \(bu 2
-Binary files are detected and handled appropriately with metadata instead of content
-.IP \(bu 2
-Empty commits require the \fB\-\-allow\-empty\fR flag
-.IP \(bu 2
-Cost varies by model - smaller models are more economical for simple changes
-.IP \(bu 2
-The AI sees both the diff and full file contents for context
-.IP \(bu 2
-CLI flags override environment variables for that command only
-.IP \(bu 2
-Template files are automatically detected - no configuration needed if using standard locations
-.IP \(bu 2
-The AI respects your template format while ensuring Git best practices are followed
-.IP \(bu 2
-Debug logs may contain sensitive information about your code structure; review before sharing
+.SH SEE ALSO
+.BR git (1),
+.BR git-commit (1)
 
 .SH BUGS
 Report bugs at: https://github.com/semperai/git-commitai/issues
 
-When reporting bugs, please include:
-.IP \(bu 2
-The command you ran (including any CLI overrides)
-.IP \(bu 2
-Your environment (OS, Python version, Git version)
-.IP \(bu 2
-Whether you have a .gitmessage template and its location
-.IP \(bu 2
-Relevant portions of the debug log (run with \fB\-\-debug\fR)
-
 .SH AUTHOR
-Semper AI
+Semper AI (https://github.com/semperai)
 
 .SH COPYRIGHT
-Copyright (C) 2025 Semper AI. License: MIT
-
-.SH SEE ALSO
-.BR git (1),
-.BR git\-commit (1),
-.BR git\-add (1),
-.BR git\-diff (1),
-.BR gitmessage (5)
-
-Full documentation at: https://github.com/semperai/git-commitai
+Copyright (C) 2024 Semper AI. MIT License.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.

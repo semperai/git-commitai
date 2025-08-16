@@ -685,8 +685,16 @@ def create_commit_message_file(
     commit_file = os.path.join(git_dir, "COMMIT_EDITMSG")
 
     with open(commit_file, "w") as f:
+        # Write the commit message (may already include AI-generated warnings as comments)
         f.write(commit_message)
-        f.write("\n\n")
+
+        # Ensure there's a blank line before Git's standard comments
+        if not commit_message.endswith('\n\n'):
+            if not commit_message.endswith('\n'):
+                f.write('\n')
+            f.write('\n')
+
+        # Add Git's standard template comments
         f.write("# Please enter the commit message for your changes. Lines starting\n")
         f.write("# with '#' will be ignored, and an empty message aborts the commit.\n")
         f.write("#\n")
@@ -995,11 +1003,35 @@ CRITICAL RULES YOU MUST FOLLOW:
    - "Refactor database connection logic"
    - "Remove deprecated API endpoints"
 
-5. OUTPUT FORMAT:
-   - Generate ONLY the commit message
-   - NO explanations, NO prefixes like "Here's the commit message"
+5. QUALITY CHECKS:
+   After generating the message, add helpful warnings as Git-style comments (lines starting with #).
+   Check for these common issues and warn if found:
+   - Subject line over 50 characters (suggest: "# Warning: Subject line is X characters (recommended: 50 max)")
+   - Subject line with period at end (suggest: "# Warning: Remove period from end of subject line")
+   - Subject line not in imperative mood (suggest: "# Warning: Use imperative mood (e.g., 'Fix' not 'Fixed')")
+   - Body lines over 72 characters (suggest: "# Warning: Line X exceeds 72 characters")
+   - Missing blank line between subject and body
+   - Vague subject line (e.g., "Update", "Fix bug", "Changes")
+   - Typos or spelling errors if obvious
+
+   Format warnings like Git's own comments:
+   # Warning: [specific issue]
+   # Suggestion: [how to fix it]
+
+6. OUTPUT FORMAT:
+   - Generate the commit message
+   - Add a blank line after the message
+   - Add any warning comments (they will be shown in editor but not included in commit)
+   - NO explanations outside of warning comments
    - NO markdown formatting
-   - Just the raw commit message text
+   - Example output:
+     Fix authentication bug in user login
+
+     This resolves the issue where users couldn't log in
+     with special characters in their passwords.
+
+     # Warning: Subject line could be more specific
+     # Suggestion: "Fix special character handling in login authentication"
 
 Remember: Most commits only need a clear subject line. Only add a body when the change is complex or the reasoning isn't obvious from the code."""
 
