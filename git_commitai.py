@@ -6,6 +6,7 @@ import json
 import subprocess
 import shlex
 import argparse
+import time
 from datetime import datetime
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
@@ -13,6 +14,11 @@ from urllib.error import URLError, HTTPError
 
 # Global debug flag
 DEBUG = False
+
+# Retry configuration constants
+MAX_RETRIES = 3
+RETRY_DELAY = 2  # seconds between retries
+RETRY_BACKOFF = 1.5  # backoff multiplier for each retry
 
 
 def debug_log(message):
@@ -538,38 +544,70 @@ def get_git_dir():
 
 
 def make_api_request(config, message):
-    """Make API request to generate commit message."""
+    """Make API request with retry logic."""
     debug_log(f"Making API request to {config['api_url']} with model {config['model']}")
     debug_log(f"Prompt length: {len(message)} characters")
 
-    payload = {
-        "model": config["model"],
-        "messages": [{"role": "user", "content": message}],
-    }
+    delay = RETRY_DELAY
+    last_error = None
 
-    req = Request(
-        config["api_url"],
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {config['api_key']}",
-        },
-    )
+    for attempt in range(1, MAX_RETRIES + 1):
+        debug_log(f"API request attempt {attempt}/{MAX_RETRIES}")
 
-    try:
-        with urlopen(req) as response:
-            data = json.loads(response.read().decode("utf-8"))
-            result = data["choices"][0]["message"]["content"]
-            debug_log(f"API request successful, response length: {len(result)} characters")
-            return result
-    except (URLError, HTTPError) as e:
-        debug_log(f"API request failed: {e}")
-        print(f"Error: Failed to make API request: {e}")
-        sys.exit(1)
-    except (KeyError, IndexError, json.JSONDecodeError) as e:
-        debug_log(f"Failed to parse API response: {e}")
-        print(f"Error: Failed to parse API response: {e}")
-        sys.exit(1)
+        try:
+            payload = {
+                "model": config["model"],
+                "messages": [{"role": "user", "content": message}],
+            }
+
+            req = Request(
+                config["api_url"],
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {config['api_key']}",
+                },
+            )
+
+            with urlopen(req) as response:
+                data = json.loads(response.read().decode("utf-8"))
+                result = data["choices"][0]["message"]["content"]
+                debug_log(f"API request successful on attempt {attempt}, response length: {len(result)} characters")
+                return result
+
+        except (URLError, HTTPError) as e:
+            last_error = e
+            error_msg = str(e)
+
+            # Check if it's an HTTP error with a status code
+            if isinstance(e, HTTPError):
+                error_msg = f"HTTP {e.code}: {e.reason}"
+                # Don't retry on client errors (4xx)
+                if 400 <= e.code < 500:
+                    debug_log(f"API request failed with client error, not retrying: {error_msg}")
+                    print(f"Error: API request failed: {error_msg}")
+                    sys.exit(1)
+
+            debug_log(f"API request attempt {attempt} failed: {error_msg}")
+
+            if attempt < MAX_RETRIES:
+                debug_log(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+                delay *= RETRY_BACKOFF
+
+        except (KeyError, IndexError, json.JSONDecodeError) as e:
+            last_error = e
+            debug_log(f"Failed to parse API response on attempt {attempt}: {e}")
+
+            if attempt < MAX_RETRIES:
+                debug_log(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+                delay *= RETRY_BACKOFF
+
+    # All retries exhausted
+    debug_log(f"All {MAX_RETRIES} API request attempts failed")
+    print(f"Error: Failed to make API request after {MAX_RETRIES} attempts: {last_error}")
+    sys.exit(1)
 
 
 def create_commit_message_file(
@@ -861,7 +899,7 @@ Here are all of the files for context:
 
 {all_files}"""
 
-    # Make API request
+    # Make API request with retry logic
     commit_message = make_api_request(config, prompt)
 
     # Get git directory
