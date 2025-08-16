@@ -7,6 +7,7 @@ import subprocess
 import shlex
 import argparse
 import time
+import re
 from datetime import datetime
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
@@ -21,10 +22,63 @@ RETRY_DELAY = 2  # seconds between retries
 RETRY_BACKOFF = 1.5  # backoff multiplier for each retry
 
 
+def redact_secrets(message):
+    """Redact sensitive information from debug messages."""
+    if not isinstance(message, str):
+        message = str(message)
+
+    # Patterns for common sensitive data
+    patterns = [
+        # API keys (various formats)
+        (r'\b[A-Za-z0-9]{32,}\b', lambda m: m.group()[:4] + '...' + m.group()[-4:] if len(m.group()) > 8 else 'REDACTED'),
+
+        # Bearer tokens in Authorization headers
+        (r'Bearer\s+[\w\-\.]+', 'Bearer [REDACTED]'),
+
+        # Basic auth credentials
+        (r'Basic\s+[\w\+/=]+', 'Basic [REDACTED]'),
+
+        # API keys in various formats (key=value, apikey:value, etc.)
+        (r'(api[_\-]?key|token|secret|password|auth|credential)["\']?\s*[:=]\s*["\']?[\w\-\.]+["\']?',
+         lambda m: m.group().split(':')[0].split('=')[0] + '=[REDACTED]'),
+
+        # Environment variable values for sensitive vars
+        (r'GIT_COMMIT_AI_KEY["\']?\s*[:=]\s*["\']?[\w\-\.]+["\']?', 'GIT_COMMIT_AI_KEY=[REDACTED]'),
+
+        # URLs with embedded credentials
+        (r'(https?://)([^:]+):([^@]+)@', r'\1[USER]:[PASS]@'),
+
+        # JSON values for sensitive keys
+        (r'"(api_key|apiKey|token|secret|password|auth|credential)"\s*:\s*"[^"]*"',
+         lambda m: f'"{m.group().split(":")[0].strip()[1:-1]}": "[REDACTED]"'),
+
+        # OAuth tokens
+        (r'oauth[_\-]?token["\']?\s*[:=]\s*["\']?[\w\-\.]+["\']?', 'oauth_token=[REDACTED]'),
+
+        # SSH keys (partial redaction)
+        (r'ssh-rsa\s+[\w\+/=]+', lambda m: 'ssh-rsa ' + m.group().split()[1][:10] + '...[REDACTED]'),
+
+        # Private keys
+        (r'-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----[\s\S]+?-----END\s+(RSA\s+)?PRIVATE\s+KEY-----',
+         '-----BEGIN PRIVATE KEY-----\n[REDACTED]\n-----END PRIVATE KEY-----'),
+    ]
+
+    redacted = message
+    for pattern, replacement in patterns:
+        if callable(replacement):
+            redacted = re.sub(pattern, replacement, redacted, flags=re.IGNORECASE)
+        else:
+            redacted = re.sub(pattern, replacement, redacted, flags=re.IGNORECASE)
+
+    return redacted
+
+
 def debug_log(message):
-    """Log debug messages if debug mode is enabled."""
+    """Log debug messages if debug mode is enabled, with secret redaction."""
     if DEBUG:
-        print(f"DEBUG: {message}", file=sys.stderr)
+        # Redact sensitive information before logging
+        safe_message = redact_secrets(message)
+        print(f"DEBUG: {safe_message}", file=sys.stderr)
 
 
 def show_man_page():
@@ -152,6 +206,7 @@ def get_env_config(args):
     # Add repository-specific configuration
     config["repo_config"] = repo_config
 
+    # Log config with redacted sensitive values
     debug_log(f"Config loaded - URL: {config['api_url']}, Model: {config['model']}, Key present: {bool(config['api_key'])}")
     debug_log(f"Repository config keys: {list(repo_config.keys())}")
 
@@ -655,6 +710,10 @@ def get_staged_files(amend=False, allow_empty=False):
                             ["show", f":{filename}"], check=False
                         ).strip()
 
+                    # Redact any secrets in file content before including in debug logs
+                    if DEBUG:
+                        debug_log(f"Processing file {filename} with content length: {len(staged_content)}")
+
                     if (
                         staged_content or staged_content == ""
                     ):  # Include empty files too
@@ -842,13 +901,19 @@ def make_api_request(config, message):
                 "messages": [{"role": "user", "content": message}],
             }
 
+            # Create request with headers (will be redacted in debug output)
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {config['api_key']}",
+            }
+
+            # Log headers with redacted auth
+            debug_log(f"Request headers: {redact_secrets(str(headers))}")
+
             req = Request(
                 config["api_url"],
                 data=json.dumps(payload).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {config['api_key']}",
-                },
+                headers=headers,
             )
 
             with urlopen(req) as response:
