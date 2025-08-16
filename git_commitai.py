@@ -45,8 +45,35 @@ def run_command(cmd, check=True):
             raise
         return e.stdout if e.stdout else ""
 
-def check_staged_changes(amend=False):
+def stage_all_tracked_files():
+    """Stage all tracked, modified files (equivalent to git add -u)."""
+    try:
+        # git add -u stages all tracked files that have been modified or deleted
+        # but does NOT add untracked files
+        subprocess.run(['git', 'add', '-u'], check=True, capture_output=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Error: Failed to stage tracked files: {e}")
+        return False
+
+def check_staged_changes(amend=False, auto_stage=False):
     """Check if there are staged changes and provide git-like output if not."""
+    if auto_stage and not amend:
+        # First, check if there are any changes to stage
+        try:
+            # Check for modified tracked files
+            result = subprocess.run(
+                ['git', 'diff', '--quiet'],
+                capture_output=True
+            )
+            if result.returncode != 0:
+                # There are unstaged changes in tracked files, stage them
+                if not stage_all_tracked_files():
+                    return False
+            # Continue to check if we now have staged changes
+        except subprocess.CalledProcessError:
+            pass
+
     if amend:
         # For --amend, we're modifying the last commit, so we don't need staged changes
         # But we should check if there's a previous commit to amend
@@ -156,68 +183,6 @@ def show_git_status():
         # Fallback to simple message if something goes wrong
         print("No changes staged for commit")
 
-def get_staged_files(amend=False):
-    """Get list of staged files with their staged contents."""
-    if amend:
-        # For --amend, get files from the last commit plus any newly staged files
-        # First, get files from the last commit
-        last_commit_files = run_command('git diff-tree --no-commit-id --name-only -r HEAD').strip()
-        # Then, get any newly staged files
-        staged_files = run_command('git diff --cached --name-only').strip()
-
-        # Combine and deduplicate
-        all_filenames = set()
-        if last_commit_files:
-            all_filenames.update(last_commit_files.split('\n'))
-        if staged_files:
-            all_filenames.update(staged_files.split('\n'))
-
-        files_output = '\n'.join(sorted(all_filenames))
-    else:
-        files_output = run_command('git diff --cached --name-only').strip()
-
-    if not files_output:
-        return ""
-
-    all_files = []
-    for filename in files_output.split('\n'):
-        if filename:
-            try:
-                # Check if file is binary
-                if amend:
-                    # For amend, check if file exists in index first, then HEAD
-                    is_binary_check = run_command(f'git diff --cached --numstat -- {filename}', check=False)
-                    if not is_binary_check or 'fatal:' in is_binary_check:
-                        is_binary_check = run_command(f'git diff HEAD^ HEAD --numstat -- {filename}', check=False)
-                else:
-                    is_binary_check = run_command(f'git diff --cached --numstat -- {filename}', check=False)
-
-                # Git shows '-' for binary files in numstat
-                if is_binary_check and is_binary_check.strip().startswith('-'):
-                    # It's a binary file
-                    file_info = get_binary_file_info(filename, amend)
-                    all_files.append(f"{filename} (binary file)\n```\n{file_info}\n```\n")
-                else:
-                    # It's a text file, get its content
-                    if amend:
-                        # Try staged version first, then fall back to HEAD version
-                        staged_content = run_command(f'git show :{filename}', check=False)
-                        if not staged_content or 'fatal:' in staged_content:
-                            # Fall back to HEAD version
-                            staged_content = run_command(f'git show HEAD:{filename}', check=False)
-                        staged_content = staged_content.strip()
-                    else:
-                        # Get the staged content of the file (what's in the index)
-                        staged_content = run_command(f'git show :{filename}', check=False).strip()
-
-                    if staged_content or staged_content == "":  # Include empty files too
-                        all_files.append(f"{filename}\n```\n{staged_content}\n```\n")
-            except Exception:
-                # File might be newly added or have other issues, skip it
-                continue
-
-    return '\n'.join(all_files)
-
 def get_binary_file_info(filename, amend=False):
     """Get information about a binary file."""
     info_parts = []
@@ -296,6 +261,68 @@ def get_binary_file_info(filename, amend=False):
         info_parts.append("Status: New file")
 
     return '\n'.join(info_parts) if info_parts else "Binary file (no additional information available)"
+
+def get_staged_files(amend=False):
+    """Get list of staged files with their staged contents."""
+    if amend:
+        # For --amend, get files from the last commit plus any newly staged files
+        # First, get files from the last commit
+        last_commit_files = run_command('git diff-tree --no-commit-id --name-only -r HEAD').strip()
+        # Then, get any newly staged files
+        staged_files = run_command('git diff --cached --name-only').strip()
+
+        # Combine and deduplicate
+        all_filenames = set()
+        if last_commit_files:
+            all_filenames.update(last_commit_files.split('\n'))
+        if staged_files:
+            all_filenames.update(staged_files.split('\n'))
+
+        files_output = '\n'.join(sorted(all_filenames))
+    else:
+        files_output = run_command('git diff --cached --name-only').strip()
+
+    if not files_output:
+        return ""
+
+    all_files = []
+    for filename in files_output.split('\n'):
+        if filename:
+            try:
+                # Check if file is binary
+                if amend:
+                    # For amend, check if file exists in index first, then HEAD
+                    is_binary_check = run_command(f'git diff --cached --numstat -- {filename}', check=False)
+                    if not is_binary_check or 'fatal:' in is_binary_check:
+                        is_binary_check = run_command(f'git diff HEAD^ HEAD --numstat -- {filename}', check=False)
+                else:
+                    is_binary_check = run_command(f'git diff --cached --numstat -- {filename}', check=False)
+
+                # Git shows '-' for binary files in numstat
+                if is_binary_check and is_binary_check.strip().startswith('-'):
+                    # It's a binary file
+                    file_info = get_binary_file_info(filename, amend)
+                    all_files.append(f"{filename} (binary file)\n```\n{file_info}\n```\n")
+                else:
+                    # It's a text file, get its content
+                    if amend:
+                        # Try staged version first, then fall back to HEAD version
+                        staged_content = run_command(f'git show :{filename}', check=False)
+                        if not staged_content or 'fatal:' in staged_content:
+                            # Fall back to HEAD version
+                            staged_content = run_command(f'git show HEAD:{filename}', check=False)
+                        staged_content = staged_content.strip()
+                    else:
+                        # Get the staged content of the file (what's in the index)
+                        staged_content = run_command(f'git show :{filename}', check=False).strip()
+
+                    if staged_content or staged_content == "":  # Include empty files too
+                        all_files.append(f"{filename}\n```\n{staged_content}\n```\n")
+            except Exception:
+                # File might be newly added or have other issues, skip it
+                continue
+
+    return '\n'.join(all_files)
 
 def get_git_diff(amend=False):
     """Get the git diff of staged changes, with binary file handling."""
@@ -420,7 +447,7 @@ def make_api_request(config, message):
         print(f"Error: Failed to parse API response: {e}")
         sys.exit(1)
 
-def create_commit_message_file(git_dir, commit_message, amend=False):
+def create_commit_message_file(git_dir, commit_message, amend=False, auto_staged=False):
     """Create the commit message file with git template."""
     commit_file = os.path.join(git_dir, 'COMMIT_EDITMSG')
 
@@ -432,6 +459,9 @@ def create_commit_message_file(git_dir, commit_message, amend=False):
         f.write('#\n')
         if amend:
             f.write('# You are amending the previous commit.\n')
+            f.write('#\n')
+        if auto_staged:
+            f.write('# Files were automatically staged using -a flag.\n')
             f.write('#\n')
         f.write(f'# On branch {get_current_branch()}\n')
         f.write('#\n')
@@ -495,7 +525,6 @@ def is_commit_message_empty(filepath):
         # More specific exception handling to avoid bare except
         return True
 
-
 def main():
     parser = argparse.ArgumentParser(
         description='Generate AI-powered git commit messages',
@@ -504,6 +533,8 @@ def main():
 Examples:
   git-commitai                    # Generate commit message for staged changes
   git-commitai -m "context"       # Add context about the changes
+  git-commitai -a                 # Auto-stage all tracked files and commit
+  git-commitai -a -m "refactor"   # Auto-stage with context
   git-commitai --amend            # Amend the previous commit with new message
   git-commitai --amend -m "fix"   # Amend with context
 
@@ -517,7 +548,8 @@ For more information, visit: https://github.com/semperai/git-commitai
     )
     parser.add_argument('-m', '--message', help='Additional context about the commit')
     parser.add_argument('--amend', action='store_true', help='Amend the previous commit')
-    parser.add_argument('--version', action='version', version='git-commitai 1.0.1')
+    parser.add_argument('-a', '--all', action='store_true', help='Automatically stage all tracked, modified files')
+    parser.add_argument('--version', action='version', version='git-commitai 1.0.2')
     args = parser.parse_args()
 
     # Check if in a git repository first
@@ -528,8 +560,14 @@ For more information, visit: https://github.com/semperai/git-commitai
         print("fatal: not a git repository (or any of the parent directories): .git")
         sys.exit(128)  # Git's standard exit code for this error
 
-    # Check for staged changes or if we're amending
-    if not check_staged_changes(amend=args.amend):
+    # Check for conflicting flags
+    if args.all and args.amend:
+        print("Error: Cannot use -a/--all with --amend")
+        print("The --amend flag modifies the previous commit and doesn't auto-stage new changes.")
+        sys.exit(1)
+
+    # Check for staged changes or if we're amending or auto-staging
+    if not check_staged_changes(amend=args.amend, auto_stage=args.all):
         sys.exit(1)
 
     # Get configuration
@@ -545,6 +583,9 @@ Do not include any conversational text, only the commit message itself."""
 
     if args.message:
         prompt += f"\n\nUser context about this commit: {args.message}"
+
+    if args.all:
+        prompt += "\n\nNote: Files were automatically staged using the -a flag."
 
     # Get git information
     git_diff = get_git_diff(amend=args.amend)
@@ -567,7 +608,7 @@ Here are all of the files for context:
     git_dir = get_git_dir()
 
     # Create commit message file
-    commit_file = create_commit_message_file(git_dir, commit_message, amend=args.amend)
+    commit_file = create_commit_message_file(git_dir, commit_message, amend=args.amend, auto_staged=args.all)
 
     # Get modification time before editing
     mtime_before = os.path.getmtime(commit_file)
