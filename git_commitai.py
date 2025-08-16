@@ -447,7 +447,7 @@ def make_api_request(config, message):
         print(f"Error: Failed to parse API response: {e}")
         sys.exit(1)
 
-def create_commit_message_file(git_dir, commit_message, amend=False, auto_staged=False):
+def create_commit_message_file(git_dir, commit_message, amend=False, auto_staged=False, no_verify=False):
     """Create the commit message file with git template."""
     commit_file = os.path.join(git_dir, 'COMMIT_EDITMSG')
 
@@ -462,6 +462,9 @@ def create_commit_message_file(git_dir, commit_message, amend=False, auto_staged
             f.write('#\n')
         if auto_staged:
             f.write('# Files were automatically staged using -a flag.\n')
+            f.write('#\n')
+        if no_verify:
+            f.write('# Git hooks will be skipped (--no-verify).\n')
             f.write('#\n')
         f.write(f'# On branch {get_current_branch()}\n')
         f.write('#\n')
@@ -537,6 +540,8 @@ Examples:
   git-commitai -a -m "refactor"   # Auto-stage with context
   git-commitai --amend            # Amend the previous commit with new message
   git-commitai --amend -m "fix"   # Amend with context
+  git-commitai -n                 # Skip git hooks (pre-commit, commit-msg)
+  git-commitai -a -n              # Auto-stage and skip hooks
 
 Environment variables:
   GIT_COMMIT_AI_KEY     Your API key (required)
@@ -549,7 +554,8 @@ For more information, visit: https://github.com/semperai/git-commitai
     parser.add_argument('-m', '--message', help='Additional context about the commit')
     parser.add_argument('--amend', action='store_true', help='Amend the previous commit')
     parser.add_argument('-a', '--all', action='store_true', help='Automatically stage all tracked, modified files')
-    parser.add_argument('--version', action='version', version='git-commitai 1.0.2')
+    parser.add_argument('-n', '--no-verify', action='store_true', help='Skip pre-commit and commit-msg hooks')
+    parser.add_argument('--version', action='version', version='git-commitai 1.0.3')
     args = parser.parse_args()
 
     # Check if in a git repository first
@@ -587,6 +593,9 @@ Do not include any conversational text, only the commit message itself."""
     if args.all:
         prompt += "\n\nNote: Files were automatically staged using the -a flag."
 
+    if args.no_verify:
+        prompt += "\n\nNote: Git hooks will be skipped for this commit (--no-verify)."
+
     # Get git information
     git_diff = get_git_diff(amend=args.amend)
     all_files = get_staged_files(amend=args.amend)
@@ -608,7 +617,13 @@ Here are all of the files for context:
     git_dir = get_git_dir()
 
     # Create commit message file
-    commit_file = create_commit_message_file(git_dir, commit_message, amend=args.amend, auto_staged=args.all)
+    commit_file = create_commit_message_file(
+        git_dir,
+        commit_message,
+        amend=args.amend,
+        auto_staged=args.all,
+        no_verify=args.no_verify
+    )
 
     # Get modification time before editing
     mtime_before = os.path.getmtime(commit_file)
@@ -632,10 +647,17 @@ Here are all of the files for context:
 
     # Perform the commit
     try:
+        commit_cmd = ['git', 'commit']
+
         if args.amend:
-            subprocess.run(['git', 'commit', '--amend', '-F', commit_file], check=True)
-        else:
-            subprocess.run(['git', 'commit', '-F', commit_file], check=True)
+            commit_cmd.append('--amend')
+
+        if args.no_verify:
+            commit_cmd.append('--no-verify')
+
+        commit_cmd.extend(['-F', commit_file])
+
+        subprocess.run(commit_cmd, check=True)
     except subprocess.CalledProcessError as e:
         sys.exit(e.returncode)
 
