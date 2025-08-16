@@ -677,8 +677,8 @@ Quick Install:
 
 Environment variables:
   GIT_COMMIT_AI_KEY     Your API key (required)
-  GIT_COMMIT_AI_URL     API endpoint URL (default: OpenAI)
-  GIT_COMMIT_AI_MODEL   Model to use (default: gpt-4o)
+  GIT_COMMIT_AI_URL     API endpoint URL (default: OpenRouter)
+  GIT_COMMIT_AI_MODEL   Model to use (default: qwen/qwen3-coder)
 
 For full documentation, run: man git-commitai
 For more information, visit: https://github.com/semperai/git-commitai

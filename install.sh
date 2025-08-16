@@ -222,7 +222,7 @@ configure_environment() {
         echo "# Git Commit AI Configuration"
         echo "export GIT_COMMIT_AI_KEY='your-api-key-here'"
         echo "export GIT_COMMIT_AI_URL='https://openrouter.ai/api/v1/chat/completions'"
-        echo "export GIT_COMMIT_AI_MODEL='anthropic/claude-3.5-sonnet'"
+        echo "export GIT_COMMIT_AI_MODEL='qwen/qwen3-coder'"
         echo ""
 
         read -p "Would you like to set up API credentials now? [y/N] " -n 1 -r
@@ -247,7 +247,7 @@ setup_api_credentials() {
     case $provider_choice in
         1)
             API_URL="https://openrouter.ai/api/v1/chat/completions"
-            DEFAULT_MODEL="anthropic/claude-3.5-sonnet"
+            DEFAULT_MODEL="qwen/qwen3-coder"
             print_color $YELLOW "Get your API key from: https://openrouter.ai/keys"
             ;;
         2)
