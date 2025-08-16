@@ -53,13 +53,30 @@ def get_env_config():
     return config
 
 
+def run_git(args, check=True):
+    """Run git with a list of args safely (no shell). Returns stdout text."""
+    try:
+        result = subprocess.run(
+            ["git"] + args,
+            capture_output=True,
+            text=True,
+            check=check
+        )
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        if check:
+            raise
+        return e.stdout if e.stdout else ""
+
+
 def run_command(cmd, check=True):
-    """Run a shell command and return output."""
+    """Run a shell command and return output. Only for simple, safe commands without user input."""
+    # This function is kept for backward compatibility with safe, static commands
+    # It should ONLY be used with hardcoded command strings that don't include user input
     try:
         result = subprocess.run(
             cmd, shell=True, capture_output=True, text=True, check=check
         )
-        # Don't strip here - let callers decide if they want to strip
         return result.stdout
     except subprocess.CalledProcessError as e:
         if check:
@@ -98,7 +115,7 @@ def check_staged_changes(amend=False, auto_stage=False, allow_empty=False):
         # For --amend, we're modifying the last commit, so we don't need staged changes
         # But we should check if there's a previous commit to amend
         try:
-            run_command("git rev-parse HEAD", check=True)
+            run_git(["rev-parse", "HEAD"], check=True)
             return True
         except:
             print("fatal: You have nothing to amend.")
@@ -125,9 +142,9 @@ def show_git_status():
     """Show git status output similar to what 'git commit' shows."""
     # Get branch name
     try:
-        branch = run_command("git branch --show-current").strip()
+        branch = run_git(["branch", "--show-current"]).strip()
         if not branch:  # detached HEAD state
-            branch = run_command("git rev-parse --short HEAD").strip()
+            branch = run_git(["rev-parse", "--short", "HEAD"]).strip()
             print(f"HEAD detached at {branch}")
         else:
             print(f"On branch {branch}")
@@ -136,13 +153,13 @@ def show_git_status():
 
     # Check if this is initial commit
     try:
-        run_command("git rev-parse HEAD", check=True)
+        run_git(["rev-parse", "HEAD"], check=True)
     except:
         print("\nInitial commit\n")
 
     # Get untracked and modified files - don't strip to preserve all lines
     try:
-        status_output = run_command("git status --porcelain")
+        status_output = run_git(["status", "--porcelain"])
 
         untracked = []
         modified = []
@@ -233,13 +250,11 @@ def get_binary_file_info(filename, amend=False):
     try:
         if amend:
             # Try to get size from index first, then HEAD
-            size_output = run_command(f"git cat-file -s :{filename}", check=False)
+            size_output = run_git(["cat-file", "-s", f":{filename}"], check=False)
             if not size_output or "fatal:" in size_output:
-                size_output = run_command(
-                    f"git cat-file -s HEAD:{filename}", check=False
-                )
+                size_output = run_git(["cat-file", "-s", f"HEAD:{filename}"], check=False)
         else:
-            size_output = run_command(f"git cat-file -s :{filename}", check=False)
+            size_output = run_git(["cat-file", "-s", f":{filename}"], check=False)
 
         if size_output and "fatal:" not in size_output:
             size_bytes = int(size_output.strip())
@@ -289,11 +304,11 @@ def get_binary_file_info(filename, amend=False):
     try:
         if amend:
             # Check if file exists in parent commit
-            run_command(f"git cat-file -e HEAD^:{filename}", check=True)
+            run_git(["cat-file", "-e", f"HEAD^:{filename}"], check=True)
             info_parts.append("Status: Modified")
         else:
             # Check if file exists in HEAD
-            run_command(f"git cat-file -e HEAD:{filename}", check=True)
+            run_git(["cat-file", "-e", f"HEAD:{filename}"], check=True)
             info_parts.append("Status: Modified")
     except:
         info_parts.append("Status: New file")
@@ -310,11 +325,11 @@ def get_staged_files(amend=False, allow_empty=False):
     if amend:
         # For --amend, get files from the last commit plus any newly staged files
         # First, get files from the last commit
-        last_commit_files = run_command(
-            "git diff-tree --no-commit-id --name-only -r HEAD"
+        last_commit_files = run_git(
+            ["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"]
         ).strip()
         # Then, get any newly staged files
-        staged_files = run_command("git diff --cached --name-only").strip()
+        staged_files = run_git(["diff", "--cached", "--name-only"]).strip()
 
         # Combine and deduplicate
         all_filenames = set()
@@ -325,7 +340,7 @@ def get_staged_files(amend=False, allow_empty=False):
 
         files_output = "\n".join(sorted(all_filenames))
     else:
-        files_output = run_command("git diff --cached --name-only").strip()
+        files_output = run_git(["diff", "--cached", "--name-only"]).strip()
 
     if not files_output:
         if allow_empty:
@@ -339,16 +354,16 @@ def get_staged_files(amend=False, allow_empty=False):
                 # Check if file is binary
                 if amend:
                     # For amend, check if file exists in index first, then HEAD
-                    is_binary_check = run_command(
-                        f"git diff --cached --numstat -- {filename}", check=False
+                    is_binary_check = run_git(
+                        ["diff", "--cached", "--numstat", "--", filename], check=False
                     )
                     if not is_binary_check or "fatal:" in is_binary_check:
-                        is_binary_check = run_command(
-                            f"git diff HEAD^ HEAD --numstat -- {filename}", check=False
+                        is_binary_check = run_git(
+                            ["diff", "HEAD^", "HEAD", "--numstat", "--", filename], check=False
                         )
                 else:
-                    is_binary_check = run_command(
-                        f"git diff --cached --numstat -- {filename}", check=False
+                    is_binary_check = run_git(
+                        ["diff", "--cached", "--numstat", "--", filename], check=False
                     )
 
                 # Git shows '-' for binary files in numstat
@@ -362,19 +377,19 @@ def get_staged_files(amend=False, allow_empty=False):
                     # It's a text file, get its content
                     if amend:
                         # Try staged version first, then fall back to HEAD version
-                        staged_content = run_command(
-                            f"git show :{filename}", check=False
+                        staged_content = run_git(
+                            ["show", f":{filename}"], check=False
                         )
                         if not staged_content or "fatal:" in staged_content:
                             # Fall back to HEAD version
-                            staged_content = run_command(
-                                f"git show HEAD:{filename}", check=False
+                            staged_content = run_git(
+                                ["show", f"HEAD:{filename}"], check=False
                             )
                         staged_content = staged_content.strip()
                     else:
                         # Get the staged content of the file (what's in the index)
-                        staged_content = run_command(
-                            f"git show :{filename}", check=False
+                        staged_content = run_git(
+                            ["show", f":{filename}"], check=False
                         ).strip()
 
                     if (
@@ -394,11 +409,11 @@ def get_git_diff(amend=False, allow_empty=False):
         # For --amend, show the diff of the last commit plus any new staged changes
         # Get the parent of HEAD (or use empty tree if it's the first commit)
         try:
-            parent = run_command("git rev-parse HEAD^").strip()
+            parent = run_git(["rev-parse", "HEAD^"]).strip()
             # Diff from parent to current index (staged changes + last commit)
-            diff = run_command(f"git diff {parent}..HEAD").strip()
+            diff = run_git(["diff", f"{parent}..HEAD"]).strip()
             # Also include any newly staged changes
-            staged_diff = run_command("git diff --cached").strip()
+            staged_diff = run_git(["diff", "--cached"]).strip()
             if staged_diff:
                 diff = (
                     f"{diff}\n\n# Additional staged changes:\n{staged_diff}"
@@ -407,9 +422,9 @@ def get_git_diff(amend=False, allow_empty=False):
                 )
         except:
             # First commit, use empty tree
-            diff = run_command("git diff --cached").strip()
+            diff = run_git(["diff", "--cached"]).strip()
     else:
-        diff = run_command("git diff --cached").strip()
+        diff = run_git(["diff", "--cached"]).strip()
 
     if not diff and allow_empty:
         return "```\n# No changes (empty commit)\n```"
@@ -463,7 +478,7 @@ def get_git_editor():
 
     # Try git config
     try:
-        editor = run_command("git config --get core.editor", check=False).strip()
+        editor = run_git(["config", "--get", "core.editor"], check=False).strip()
         if editor:
             return editor
     except:
@@ -476,9 +491,9 @@ def get_git_editor():
 def get_current_branch():
     """Get current git branch name."""
     try:
-        branch = run_command("git branch --show-current").strip()
+        branch = run_git(["branch", "--show-current"]).strip()
         if not branch:  # detached HEAD state
-            return run_command("git rev-parse --short HEAD").strip()
+            return run_git(["rev-parse", "--short", "HEAD"]).strip()
         return branch
     except:
         return "unknown"
@@ -487,7 +502,7 @@ def get_current_branch():
 def get_git_dir():
     """Get the .git directory path."""
     # This should never fail since we check in main(), but just in case
-    return run_command("git rev-parse --git-dir").strip()
+    return run_git(["rev-parse", "--git-dir"]).strip()
 
 
 def make_api_request(config, message):
@@ -556,8 +571,8 @@ def create_commit_message_file(
             f.write("# Changes to be committed (including previous commit):\n")
             # Get files from last commit and staged
             try:
-                last_commit_files = run_command(
-                    "git diff-tree --no-commit-id --name-status -r HEAD"
+                last_commit_files = run_git(
+                    ["diff-tree", "--no-commit-id", "--name-status", "-r", "HEAD"]
                 )
                 if last_commit_files:
                     for line in last_commit_files.split("\n"):
@@ -567,7 +582,7 @@ def create_commit_message_file(
                 pass
 
             # Also show newly staged files if any
-            staged_status = run_command("git diff --cached --name-status")
+            staged_status = run_git(["diff", "--cached", "--name-status"])
             if staged_status.strip():
                 f.write("# \n")
                 f.write("# Additional staged changes:\n")
@@ -580,7 +595,7 @@ def create_commit_message_file(
         else:
             f.write("# Changes to be committed:\n")
             # Get staged files status
-            status = run_command("git diff --cached --name-status")
+            status = run_git(["diff", "--cached", "--name-status"])
             for line in status.split("\n"):
                 if line:
                     f.write(f"# {line}\n")
@@ -599,18 +614,18 @@ def create_commit_message_file(
             if amend:
                 # For amend, show diff from parent to current state
                 try:
-                    parent = run_command("git rev-parse HEAD^").strip()
-                    diff_output = run_command(f"git diff {parent}..HEAD")
+                    parent = run_git(["rev-parse", "HEAD^"]).strip()
+                    diff_output = run_git(["diff", f"{parent}..HEAD"])
                     # Also include any newly staged changes
-                    staged_diff = run_command("git diff --cached")
+                    staged_diff = run_git(["diff", "--cached"])
                     if staged_diff.strip():
                         diff_output += "\n# Additional staged changes:\n" + staged_diff
                 except:
                     # First commit or other issue, just show staged
-                    diff_output = run_command("git diff --cached")
+                    diff_output = run_git(["diff", "--cached"])
             else:
                 # Normal commit, show staged changes
-                diff_output = run_command("git diff --cached")
+                diff_output = run_git(["diff", "--cached"])
 
             # Add diff as comments
             if diff_output:
