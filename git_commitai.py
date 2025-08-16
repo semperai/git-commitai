@@ -733,51 +733,63 @@ def open_editor(filepath, editor):
         sys.exit(1)
 
 
-def strip_comments_from_message(filepath):
-    """Read commit message file and return content without comment lines."""
-    debug_log(f"Stripping comments from message file: {filepath}")
+def strip_comments_and_save(filepath):
+    """Strip comment lines from commit message file and save it back."""
+    debug_log(f"Stripping comments from file: {filepath}")
 
-    non_comment_lines = []
+    clean_lines = []
     try:
         with open(filepath, "r") as f:
             for line in f:
-                # Check if line starts with # (ignoring leading whitespace)
-                if not line.lstrip().startswith("#"):
-                    # Preserve the line as-is (including trailing whitespace/newlines)
-                    non_comment_lines.append(line)
+                # If line starts with # (ignoring whitespace), it's a comment
+                if line.lstrip().startswith("#"):
+                    # Skip all comment lines
+                    continue
+                else:
+                    # Keep non-comment lines
+                    clean_lines.append(line)
 
-        # Join lines and strip trailing whitespace from the entire message
-        message = "".join(non_comment_lines).rstrip()
-        debug_log(f"Message after stripping comments: {len(message)} characters")
-        return message
+        # Write back the cleaned message
+        with open(filepath, "w") as f:
+            # Remove trailing whitespace/newlines but keep internal structure
+            content = "".join(clean_lines).rstrip()
+            if content:
+                f.write(content)
+                f.write("\n")  # Ensure file ends with newline
+
+            debug_log(f"Cleaned message: {repr(content[:100])}..." if len(content) > 100 else f"Cleaned message: {repr(content)}")
+
+        debug_log(f"Stripped {len(clean_lines)} lines of content from commit message")
+        return True
     except (IOError, OSError) as e:
-        debug_log(f"Error reading commit message file: {e}")
-        return ""
+        debug_log(f"Error processing commit message file: {e}")
+        print(f"Error: Failed to process commit message: {e}")
+        return False
 
 
 def is_commit_message_empty(filepath):
     """Check if commit message is empty (ignoring comments)."""
-    message = strip_comments_from_message(filepath)
-    return len(message) == 0
+    debug_log(f"Checking if commit message is empty: {filepath}")
 
-
-def write_clean_commit_message(filepath):
-    """Write the commit message back without comments for git to use."""
-    debug_log(f"Writing clean commit message to: {filepath}")
-
-    message = strip_comments_from_message(filepath)
-
-    # Write the clean message back to the file
     try:
-        with open(filepath, "w") as f:
-            f.write(message)
-            if message and not message.endswith("\n"):
-                f.write("\n")
-        debug_log("Clean commit message written")
+        with open(filepath, "r") as f:
+            for line in f:
+                # Strip only trailing whitespace to preserve intentional indentation
+                line = line.rstrip("\n\r")
+                # Skip empty lines
+                if not line or not line.strip():
+                    continue
+                # Check if this line is a comment (accounting for leading whitespace)
+                if not line.lstrip().startswith("#"):
+                    # Found actual content (non-comment, non-empty line)
+                    debug_log("Commit message has content")
+                    return False
+        debug_log("Commit message is empty")
+        return True
     except (IOError, OSError) as e:
-        debug_log(f"Error writing clean commit message: {e}")
-        print(f"Error: Failed to write commit message: {e}")
-        sys.exit(1)
+        debug_log(f"Error reading commit message file: {e}")
+        # More specific exception handling to avoid bare except
+        return True
 
 
 def main():
@@ -845,7 +857,7 @@ For more information, visit: https://github.com/semperai/git-commitai
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="Enable debug logging to ~/.gitcommitai.debug.log",
+        help="Enable debug logging to stderr",
     )
 
     # Debug section arguments
@@ -863,9 +875,6 @@ For more information, visit: https://github.com/semperai/git-commitai
         debug_log("Git Commit AI started with --debug flag")
         debug_log(f"Python version: {sys.version}")
         debug_log(f"Arguments: {sys.argv[1:]}")
-
-        # Print debug info to stderr
-        print(f"Debug mode enabled. Logging to: ~/.gitcommitai.debug.log", file=sys.stderr)
 
     # Check if in a git repository first
     try:
@@ -967,8 +976,9 @@ Here are all of the files for context:
         print("Aborting commit due to empty commit message.")
         sys.exit(1)
 
-    # Clean the commit message file by removing comments
-    write_clean_commit_message(commit_file)
+    # Strip comments from the commit message file before committing
+    if not strip_comments_and_save(commit_file):
+        sys.exit(1)
 
     # Perform the commit
     try:
