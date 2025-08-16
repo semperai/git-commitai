@@ -1,7 +1,6 @@
 """Tests for .gitmessage template file reading functionality."""
 
 import os
-import tempfile
 from unittest.mock import patch, mock_open
 import git_commitai
 
