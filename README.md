@@ -67,16 +67,10 @@
 ## ✨ Features
 
 - 🤖 **AI-powered commit message generation** - Analyzes your code changes and generates descriptive commit messages
-- 📝 **Works like native `git commit`** - Same workflow: save to commit, quit to abort
+- 📝 **Works like native `git commit`** - Same workflow with support for git commit flags
 - 🔧 **Provider agnostic** - Works with OpenAI, OpenRouter, Anthropic, local LLMs, or any OpenAI-compatible API
 - ✏️ **Full editor integration** - Uses your configured git editor for message editing
 - 📊 **Context aware** - Includes both the diff and full file contents for better understanding
-- 💬 **Additional context support** - Optional `-m` flag for providing extra context about your changes
-- 🔄 **Amend support** - Use `--amend` to update the previous commit with AI-generated messages
-- 🚀 **Auto-staging** - Use `-a` to automatically stage all tracked, modified files
-- 🔒 **Binary file aware** - Intelligently handles binary files without breaking
-- ⚡ **Hook skipping** - Use `-n` to bypass pre-commit hooks when needed
-- 👀 **Verbose mode** - Use `-v` to see the full diff in your editor
 
 ## 📦 Installation
 
@@ -84,7 +78,7 @@
 
 1. Download the script:
 ```bash
-curl -O https://raw.githubusercontent.com/semperai/git-commitai/main/git_commitai.py
+curl -O https://github.com/semperai/git-commitai/blob/master/git_commitai.py
 chmod +x git_commitai.py
 ```
 
@@ -485,10 +479,10 @@ pip install -r requirements.txt
 
 ```bash
 # Run all tests
-pytest test_git_commitai.py -v
+make test
 
 # Run with coverage report
-pytest test_git_commitai.py -v --cov=git_commitai --cov-report=term-missing
+make coverage
 
 # Run specific test class
 pytest test_git_commitai.py::TestAutoStageFlag -v
@@ -549,7 +543,7 @@ class TestNewFeature:
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests for your changes
-5. Ensure all tests pass (`pytest`)
+5. Ensure all tests pass (`make test`)
 6. Format your code (`black git_commitai.py test_git_commitai.py`)
 7. Commit your changes (you can use `git-commitai` itself!)
 8. Push to your fork (`git push origin feature/amazing-feature`)
@@ -562,14 +556,6 @@ All pull requests automatically run:
 - Cross-platform tests (Ubuntu, macOS, Windows)
 - Code coverage reporting
 - Linting and formatting checks
-
-## 📄 License
-
-MIT License - feel free to use and modify as needed.
-
----
-
-**⚠️ Privacy Note**: This tool sends your code changes to external AI APIs. Ensure you have permission to share your code with third-party services and that you're not violating any confidentiality agreements.
 
 ## 🔒 License
 This project is released under the MIT license as found in the [LICENSE](LICENSE) file.
