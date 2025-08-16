@@ -304,9 +304,9 @@ class TestAllowEmptyFlag:
                                                         if "commit" in str(call)
                                                     ]
                                                     if commit_calls:
-                                                        last_commit_call = commit_calls[-1]
-                                                        assert "--allow-empty" in last_commit_call[0][0]
-                                                        assert "--no-verify" in last_commit_call[0][0]
+                                                        last_cmd = commit_calls[-1].args[0]
+                                                        assert "--allow-empty" in last_cmd
+                                                        assert "--no-verify" in last_cmd
 
     def test_allow_empty_with_verbose(self):
         """Test combining --allow-empty with --verbose."""
