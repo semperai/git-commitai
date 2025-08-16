@@ -59,7 +59,8 @@ jobs:
       run: |
         python git_commitai.py --help || true
 
-    - name: Test in git repository
+    - name: Test in git repository (Unix)
+      if: runner.os != 'Windows'
       run: |
         # Create a test file with a different name that's not in .gitignore
         echo "test content" > test_integration.txt
@@ -71,3 +72,18 @@ jobs:
 
         # Test that script recognizes staged changes
         python git_commitai.py --help || true
+    
+    - name: Test in git repository (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        # Create a test file with a different name that's not in .gitignore
+        echo "test content" > test_integration.txt
+        git add test_integration.txt
+        
+        # Set up mock API key using PowerShell syntax
+        $env:GIT_COMMIT_AI_KEY="test-key"
+        $env:GIT_COMMIT_AI_URL="https://api.example.com"
+        
+        # Test that script recognizes staged changes
+        python git_commitai.py --help
+      shell: pwsh
