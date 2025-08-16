@@ -16,6 +16,7 @@ An intelligent git commit message generator that uses AI to analyze your staged 
 - ✏️ **Full editor integration** - Uses your configured git editor for message editing
 - 📊 **Context aware** - Includes both the diff and full file contents for better understanding
 - 💬 **Additional context support** - Optional `-m` flag for providing extra context about your changes
+- 🔄 **Amend support** - Use `--amend` to update the previous commit with AI-generated messages
 
 ## Installation
 
@@ -132,7 +133,28 @@ git commitai
 git commitai -m "This refactors the auth system to use JWT tokens instead of sessions"
 ```
 
-### Workflow Example
+### Amending Previous Commits
+```bash
+# Amend the last commit with a new AI-generated message
+git commitai --amend
+
+# Amend with additional context for the AI
+git commitai --amend -m "Fixed the race condition and improved error handling"
+
+# Stage new changes and amend them into the previous commit
+git add fixed-file.js
+git commitai --amend
+```
+
+The `--amend` feature works just like `git commit --amend` but generates a new AI message based on:
+- The changes from the previous commit
+- Any newly staged changes
+- The previous commit message (for context)
+- Any additional context you provide with `-m`
+
+### Workflow Examples
+
+#### Standard Workflow
 ```bash
 # Make some changes
 echo "console.log('Hello World')" >> app.js
@@ -159,6 +181,38 @@ git commitai
 # Edit if needed, then save to commit or quit to abort
 ```
 
+#### Amend Workflow
+```bash
+# You just made a commit but realized you forgot something
+git commitai  # Creates commit: "Add user authentication"
+
+# Oops, forgot to handle edge cases
+vim auth.js  # Make additional changes
+git add auth.js
+
+# Amend with the new changes
+git commitai --amend -m "Added edge case handling for expired tokens"
+
+# Your editor opens with a new comprehensive message like:
+# Add user authentication with comprehensive error handling
+#
+# - Implemented JWT-based authentication system
+# - Added login and logout endpoints
+# - Included token validation middleware
+# - Added edge case handling for expired and malformed tokens
+# - Implemented proper error responses for auth failures
+#
+# You are amending the previous commit.
+#
+# On branch main
+#
+# Changes to be committed (including previous commit):
+#   M auth.js
+#   A middleware/auth.js
+#   M routes/user.js
+#
+```
+
 ## How It Works
 
 1. **Analyzes staged changes**: Reads `git diff --cached` to understand what changed
@@ -167,11 +221,18 @@ git commitai
 4. **Opens editor**: Places the generated message in your git editor
 5. **Commits or aborts**: Just like regular `git commit` - save to commit, quit to abort
 
+For `--amend`:
+1. **Analyzes previous commit**: Includes changes from the last commit
+2. **Includes new staged changes**: Combines with any newly staged files
+3. **Provides previous message**: Uses the old commit message as context
+4. **Generates comprehensive message**: Creates a new message covering all changes
+
 ## Tips
 
 - **Better results with context**: Use `-m` flag to explain WHY you made changes
 - **Model selection**: GPT-4 or Claude models generally produce better commit messages than GPT-3.5
 - **Cost optimization**: For simple changes, smaller models like `gpt-3.5-turbo` work well
+- **Amending commits**: Use `--amend` when you need to update the last commit rather than creating a new one
 - **Editor shortcuts**: 
   - vim: `:wq` to save and commit, `:q!` to abort
   - nano: `Ctrl+O, Enter, Ctrl+X` to save, `Ctrl+X` to abort
@@ -189,6 +250,12 @@ export GIT_COMMIT_AI_KEY="your-key-here"
 Stage your changes first:
 ```bash
 git add .
+```
+
+### "Nothing to amend" error
+This occurs when trying to use `--amend` on an initial commit (no HEAD exists yet). Make a normal commit first:
+```bash
+git commitai  # without --amend
 ```
 
 ### Empty response from API
