@@ -1,5 +1,11 @@
 # Git Commit AI
 
+[![Tests](https://github.com/semperai/git-commitai/workflows/Tests/badge.svg)](https://github.com/semperai/git-commitai/actions)
+[![codecov](https://codecov.io/gh/semperai/git-commitai/branch/main/graph/badge.svg)](https://codecov.io/gh/semperai/git-commitai)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 An intelligent git commit message generator that uses AI to analyze your staged changes and generate meaningful commit messages, following conventional commit standards.
 
 ## Features
@@ -17,7 +23,7 @@ An intelligent git commit message generator that uses AI to analyze your staged 
 
 1. Download the script:
 ```bash
-curl -O https://raw.githubusercontent.com/kasumi-1/git-commit-ai/master/git-commitai
+curl -O https://raw.githubusercontent.com/semperai/git-commitai/main/git-commitai
 chmod +x git-commitai
 ```
 
@@ -145,7 +151,7 @@ git commitai
 # Please enter the commit message for your changes. Lines starting
 # with '#' will be ignored, and an empty message aborts the commit.
 #
-# On branch master
+# On branch main
 #
 # Changes to be committed:
 #   M app.js
@@ -222,7 +228,100 @@ MESSAGE="Generate a conventional commit message (feat/fix/docs/style/refactor/te
 
 ## Contributing
 
-Feel free to submit issues and enhancement requests!
+We welcome contributions! Please see our [Contributing Guidelines](#development) below.
+
+### Development
+
+#### Setting Up Development Environment
+
+1. **Clone the repository:**
+```bash
+git clone https://github.com/semperai/git-commitai.git
+cd git-commitai
+```
+
+2. **Create a virtual environment (recommended):**
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. **Install development dependencies:**
+```bash
+pip install -r requirements.txt
+```
+
+#### Running Tests
+
+```bash
+# Run all tests
+pytest test_git_commitai.py -v
+
+# Run with coverage report
+pytest test_git_commitai.py -v --cov=. --cov-report=term-missing
+
+# Run specific test
+pytest test_git_commitai.py::TestGitStatus::test_parse_porcelain_modified_files -v
+
+# Generate HTML coverage report
+pytest test_git_commitai.py --cov=. --cov-report=html
+# Open htmlcov/index.html in your browser
+```
+
+#### Code Quality
+
+```bash
+# Format code with black
+black git-commitai test_git_commitai.py
+
+# Check formatting without changing files
+black --check git-commitai test_git_commitai.py
+
+# Run linting
+flake8 git-commitai test_git_commitai.py --max-line-length=100
+
+# Type checking (optional)
+mypy git-commitai
+```
+
+#### Writing Tests
+
+When adding new features or fixing bugs, please include tests:
+
+1. Add test cases to `test_git_commitai.py`
+2. Follow the existing test structure
+3. Ensure all tests pass before submitting PR
+4. Aim for high code coverage (>90%)
+
+Example test structure:
+```python
+def test_new_feature():
+    """Test description of what you're testing."""
+    with patch('git_commitai.some_function') as mock_func:
+        mock_func.return_value = 'expected'
+        result = git_commitai.new_feature()
+        assert result == 'expected'
+```
+
+#### Submitting Pull Requests
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for your changes
+5. Ensure all tests pass (`pytest`)
+6. Format your code (`black git-commitai test_git_commitai.py`)
+7. Commit your changes (you can use `git-commitai` itself!)
+8. Push to your fork (`git push origin feature/amazing-feature`)
+9. Open a Pull Request
+
+#### CI/CD
+
+All pull requests automatically run:
+- Tests on Python 3.8, 3.9, 3.10, 3.11, and 3.12
+- Cross-platform tests (Ubuntu, macOS, Windows)
+- Code coverage reporting
+- Linting and formatting checks
 
 ## License
 
@@ -230,4 +329,19 @@ MIT License - feel free to use and modify as needed.
 
 ## Credits
 
-Created by kasumi-1
+Created by [your-name]. Inspired by the need for better commit messages and the power of AI to understand code changes.
+
+---
+
+**Note**: This tool sends your code changes to external AI APIs. Ensure you have permission to share your code with third-party services and that you're not violating any confidentiality agreements.
+
+## 🔒 License
+* This project is released under the MIT license as found in the [LICENSE](LICENSE) file.
+
+## ✨ Star History
+[![Star History](https://api.star-history.com/svg?repos=semperai/git-commitai&type=Date)](https://star-history.com/#semperai/git-commitai&Date)
+
+## 🤗 Contributors
+<a href="https://github.com/semperai/git-commitai/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=semperai/git-commitai" />
+</a>

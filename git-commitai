@@ -38,11 +38,12 @@ def run_command(cmd, check=True):
             text=True, 
             check=check
         )
-        return result.stdout.strip()
+        # Don't strip here - let callers decide if they want to strip
+        return result.stdout
     except subprocess.CalledProcessError as e:
         if check:
             raise
-        return e.stdout.strip() if e.stdout else ""
+        return e.stdout if e.stdout else ""
 
 def check_staged_changes():
     """Check if there are staged changes and provide git-like output if not."""
@@ -63,9 +64,9 @@ def show_git_status():
     """Show git status output similar to what 'git commit' shows."""
     # Get branch name
     try:
-        branch = run_command('git branch --show-current')
+        branch = run_command('git branch --show-current').strip()
         if not branch:  # detached HEAD state
-            branch = run_command('git rev-parse --short HEAD')
+            branch = run_command('git rev-parse --short HEAD').strip()
             print(f"HEAD detached at {branch}")
         else:
             print(f"On branch {branch}")
@@ -78,7 +79,7 @@ def show_git_status():
     except:
         print("\nInitial commit\n")
     
-    # Get untracked and modified files
+    # Get untracked and modified files - don't strip to preserve all lines
     try:
         status_output = run_command('git status --porcelain')
         
@@ -86,18 +87,29 @@ def show_git_status():
         modified = []
         deleted = []
         
-        for line in status_output.split('\n'):
-            if not line:
-                continue
-            status = line[:2]
-            filename = line[3:]
+        if status_output:
+            # Split on newlines but preserve empty strings to handle all lines
+            lines = status_output.rstrip('\n').split('\n') if status_output.rstrip('\n') else []
             
-            if status == '??':
-                untracked.append(filename)
-            elif 'M' in status and status[0] != 'M':  # Modified but not staged
-                modified.append(filename)
-            elif 'D' in status and status[0] != 'D':  # Deleted but not staged
-                deleted.append(filename)
+            for line in lines:
+                if not line:
+                    continue
+                # Git status --porcelain format: XY filename
+                # X = staged status, Y = working tree status
+                if len(line) >= 3:
+                    staged_status = line[0] if len(line) > 0 else ' '
+                    working_status = line[1] if len(line) > 1 else ' '
+                    filename = line[3:] if len(line) > 3 else ''
+                    
+                    if not filename:
+                        continue
+                    
+                    if staged_status == '?' and working_status == '?':
+                        untracked.append(filename)
+                    elif working_status == 'M':  # Modified in working tree
+                        modified.append(filename)
+                    elif working_status == 'D':  # Deleted in working tree
+                        deleted.append(filename)
         
         # Show unstaged changes
         changes_shown = False
@@ -105,36 +117,38 @@ def show_git_status():
             print("Changes not staged for commit:")
             print('  (use "git add <file>..." to update what will be committed)')
             print('  (use "git restore <file>..." to discard changes in working directory)')
-            for f in modified:
+            for f in sorted(modified):
                 print(f"\tmodified:   {f}")
-            for f in deleted:
+            for f in sorted(deleted):
                 print(f"\tdeleted:    {f}")
-            print()
             changes_shown = True
         
         # Show untracked files
         if untracked:
+            if changes_shown:
+                print()
             print("Untracked files:")
             print('  (use "git add <file>..." to include in what will be committed)')
-            for f in untracked:
+            for f in sorted(untracked):
                 print(f"\t{f}")
-            print()
             changes_shown = True
         
         # Final message
         if not changes_shown:
             print("nothing to commit, working tree clean")
-        elif untracked and not modified and not deleted:
-            print("nothing added to commit but untracked files present (use \"git add\" to track)")
-        elif modified or deleted:
-            print("no changes added to commit (use \"git add\" and/or \"git commit -a\")")
+        else:
+            print()
+            if untracked and not modified and not deleted:
+                print("nothing added to commit but untracked files present (use \"git add\" to track)")
+            elif modified or deleted:
+                print("no changes added to commit (use \"git add\" and/or \"git commit -a\")")
     except Exception as e:
         # Fallback to simple message if something goes wrong
         print("No changes staged for commit")
 
 def get_staged_files():
     """Get list of staged files with their staged contents."""
-    files_output = run_command('git diff --cached --name-only')
+    files_output = run_command('git diff --cached --name-only').strip()
     if not files_output:
         return ""
     
@@ -144,7 +158,7 @@ def get_staged_files():
             try:
                 # Get the staged content of the file (what's in the index)
                 # :filename syntax gets the staged version
-                staged_content = run_command(f'git show :{filename}', check=False)
+                staged_content = run_command(f'git show :{filename}', check=False).strip()
                 if staged_content or staged_content == "":  # Include empty files too
                     all_files.append(f"{filename}\n```\n{staged_content}\n```\n")
             except Exception:
@@ -155,7 +169,7 @@ def get_staged_files():
 
 def get_git_diff():
     """Get the git diff of staged changes."""
-    diff = run_command('git diff --cached')
+    diff = run_command('git diff --cached').strip()
     return f"```\n{diff}\n```"
 
 def get_git_editor():
@@ -171,7 +185,7 @@ def get_git_editor():
     
     # Try git config
     try:
-        editor = run_command('git config --get core.editor', check=False)
+        editor = run_command('git config --get core.editor', check=False).strip()
         if editor:
             return editor
     except:
@@ -183,14 +197,17 @@ def get_git_editor():
 def get_current_branch():
     """Get current git branch name."""
     try:
-        return run_command('git branch --show-current')
+        branch = run_command('git branch --show-current').strip()
+        if not branch:  # detached HEAD state
+            return run_command('git rev-parse --short HEAD').strip()
+        return branch
     except:
         return 'unknown'
 
 def get_git_dir():
     """Get the .git directory path."""
     # This should never fail since we check in main(), but just in case
-    return run_command('git rev-parse --git-dir')
+    return run_command('git rev-parse --git-dir').strip()
 
 def make_api_request(config, message):
     """Make API request to generate commit message."""
@@ -269,8 +286,24 @@ def is_commit_message_empty(filepath):
         return True
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate AI-powered git commit messages')
+    parser = argparse.ArgumentParser(
+        description='Generate AI-powered git commit messages',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  git-commitai                    # Generate commit message for staged changes
+  git-commitai -m "context"       # Add context about the changes
+  
+Environment variables:
+  GIT_COMMIT_AI_KEY     Your API key (required)
+  GIT_COMMIT_AI_URL     API endpoint URL (default: OpenAI)
+  GIT_COMMIT_AI_MODEL   Model to use (default: gpt-4o)
+  
+For more information, visit: https://github.com/semperai/git-commitai
+        """
+    )
     parser.add_argument('-m', '--message', help='Additional context about the commit')
+    parser.add_argument('--version', action='version', version='git-commitai 1.0.0')
     args = parser.parse_args()
     
     # Check if in a git repository first
