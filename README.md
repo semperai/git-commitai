@@ -1,14 +1,70 @@
 # Git Commit AI
 
-[![Tests](https://github.com/semperai/git-commitai/workflows/Tests/badge.svg)](https://github.com/semperai/git-commitai/actions)
-[![codecov](https://codecov.io/gh/semperai/git-commitai/branch/main/graph/badge.svg)](https://codecov.io/gh/semperai/git-commitai)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+<div align="center">
+  <br />
+  <p>
+    <a href="https://github.com/semperai/git-commitai">
+      <img src="logo.webp" alt="Git Commit AI Logo" width="200" />
+    </a>
+  </p>
+  <h3 align="center">Git Commit AI</h3>
+  <p align="center">
+    <strong>Intelligent commit messages powered by AI</strong>
+    <br />
+    <br />
+    <a href="https://github.com/semperai/git-commitai#features">Features</a>
+    ·
+    <a href="https://github.com/semperai/git-commitai#installation">Installation</a>
+    ·
+    <a href="https://github.com/semperai/git-commitai#usage">Usage</a>
+    ·
+    <a href="https://github.com/semperai/git-commitai/issues">Report Bug</a>
+  </p>
+  <br />
 
-An intelligent git commit message generator that uses AI to analyze your staged changes and generate meaningful commit messages, following conventional commit standards.
+  <!-- Badges -->
+  <p>
+    <a href="https://github.com/semperai/git-commitai/stargazers">
+      <img src="https://img.shields.io/github/stars/semperai/git-commitai?style=for-the-badge" alt="Stars" />
+    </a>
+    <a href="https://github.com/semperai/git-commitai/actions">
+      <img src="https://img.shields.io/github/actions/workflow/status/semperai/git-commitai/tests.yml?style=for-the-badge&label=Tests" alt="Tests" />
+    </a>
+    <a href="https://codecov.io/gh/semperai/git-commitai">
+      <img src="https://img.shields.io/codecov/c/github/semperai/git-commitai?style=for-the-badge" alt="Coverage" />
+    </a>
+    <a href="https://github.com/semperai/git-commitai/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/semperai/git-commitai?style=for-the-badge" alt="License" />
+    </a>
+  </p>
 
-## Features
+  <!-- Language and compatibility badges -->
+  <p>
+    <a href="https://www.python.org/downloads/">
+      <img src="https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+    </a>
+    <a href="https://github.com/psf/black">
+      <img src="https://img.shields.io/badge/Code%20Style-Black-000000?style=for-the-badge&logo=python&logoColor=white" alt="Code style" />
+    </a>
+    <a href="https://git-scm.com/">
+      <img src="https://img.shields.io/badge/Git-2.0+-F05032?style=for-the-badge&logo=git&logoColor=white" alt="Git" />
+    </a>
+  </p>
+</div>
+
+<br />
+
+---
+
+<div align="center">
+  <p align="center">
+    An intelligent git commit message generator that uses AI to analyze your staged changes and generate meaningful, conventional commit messages. Works seamlessly with your existing git workflow.
+  </p>
+</div>
+
+---
+
+## ✨ Features
 
 - 🤖 **AI-powered commit message generation** - Analyzes your code changes and generates descriptive commit messages
 - 📝 **Works like native `git commit`** - Same workflow: save to commit, quit to abort
@@ -17,6 +73,7 @@ An intelligent git commit message generator that uses AI to analyze your staged 
 - 📊 **Context aware** - Includes both the diff and full file contents for better understanding
 - 💬 **Additional context support** - Optional `-m` flag for providing extra context about your changes
 - 🔄 **Amend support** - Use `--amend` to update the previous commit with AI-generated messages
+- 🔒 **Binary file aware** - Intelligently handles binary files without breaking
 
 ## Installation
 

@@ -183,28 +183,122 @@ def get_staged_files(amend=False):
     for filename in files_output.split('\n'):
         if filename:
             try:
-                # For amend, try to get staged version first, then fall back to HEAD version
+                # Check if file is binary
                 if amend:
-                    # Try staged version first
-                    staged_content = run_command(f'git show :{filename}', check=False)
-                    if not staged_content and 'fatal:' in staged_content:
-                        # Fall back to HEAD version
-                        staged_content = run_command(f'git show HEAD:{filename}', check=False)
-                    staged_content = staged_content.strip()
+                    # For amend, check if file exists in index first, then HEAD
+                    is_binary_check = run_command(f'git diff --cached --numstat -- {filename}', check=False)
+                    if not is_binary_check or 'fatal:' in is_binary_check:
+                        is_binary_check = run_command(f'git diff HEAD^ HEAD --numstat -- {filename}', check=False)
                 else:
-                    # Get the staged content of the file (what's in the index)
-                    staged_content = run_command(f'git show :{filename}', check=False).strip()
+                    is_binary_check = run_command(f'git diff --cached --numstat -- {filename}', check=False)
 
-                if staged_content or staged_content == "":  # Include empty files too
-                    all_files.append(f"{filename}\n```\n{staged_content}\n```\n")
+                # Git shows '-' for binary files in numstat
+                if is_binary_check and is_binary_check.strip().startswith('-'):
+                    # It's a binary file
+                    file_info = get_binary_file_info(filename, amend)
+                    all_files.append(f"{filename} (binary file)\n```\n{file_info}\n```\n")
+                else:
+                    # It's a text file, get its content
+                    if amend:
+                        # Try staged version first, then fall back to HEAD version
+                        staged_content = run_command(f'git show :{filename}', check=False)
+                        if not staged_content or 'fatal:' in staged_content:
+                            # Fall back to HEAD version
+                            staged_content = run_command(f'git show HEAD:{filename}', check=False)
+                        staged_content = staged_content.strip()
+                    else:
+                        # Get the staged content of the file (what's in the index)
+                        staged_content = run_command(f'git show :{filename}', check=False).strip()
+
+                    if staged_content or staged_content == "":  # Include empty files too
+                        all_files.append(f"{filename}\n```\n{staged_content}\n```\n")
             except Exception:
-                # File might be newly added or binary, skip it
+                # File might be newly added or have other issues, skip it
                 continue
 
     return '\n'.join(all_files)
 
+def get_binary_file_info(filename, amend=False):
+    """Get information about a binary file."""
+    info_parts = []
+
+    # Get file extension
+    import os
+    _, ext = os.path.splitext(filename)
+    if ext:
+        info_parts.append(f"File type: {ext}")
+
+    # Try to get file size from git
+    try:
+        if amend:
+            # Try to get size from index first, then HEAD
+            size_output = run_command(f'git cat-file -s :{filename}', check=False)
+            if not size_output or 'fatal:' in size_output:
+                size_output = run_command(f'git cat-file -s HEAD:{filename}', check=False)
+        else:
+            size_output = run_command(f'git cat-file -s :{filename}', check=False)
+
+        if size_output and 'fatal:' not in size_output:
+            size_bytes = int(size_output.strip())
+            # Format size nicely
+            if size_bytes < 1024:
+                size_str = f"{size_bytes} bytes"
+            elif size_bytes < 1024 * 1024:
+                size_str = f"{size_bytes / 1024:.1f} KB"
+            else:
+                size_str = f"{size_bytes / (1024 * 1024):.1f} MB"
+            info_parts.append(f"Size: {size_str}")
+    except:
+        pass
+
+    # Common binary file type descriptions
+    binary_descriptions = {
+        '.jpg': 'JPEG image',
+        '.jpeg': 'JPEG image',
+        '.png': 'PNG image',
+        '.gif': 'GIF image',
+        '.webp': 'WebP image',
+        '.svg': 'SVG vector image',
+        '.ico': 'Icon file',
+        '.pdf': 'PDF document',
+        '.zip': 'ZIP archive',
+        '.tar': 'TAR archive',
+        '.gz': 'Gzip compressed file',
+        '.exe': 'Windows executable',
+        '.dll': 'Dynamic link library',
+        '.so': 'Shared object library',
+        '.dylib': 'Dynamic library (macOS)',
+        '.mp3': 'MP3 audio',
+        '.mp4': 'MP4 video',
+        '.avi': 'AVI video',
+        '.mov': 'QuickTime video',
+        '.ttf': 'TrueType font',
+        '.woff': 'Web font',
+        '.woff2': 'Web font 2.0',
+        '.db': 'Database file',
+        '.sqlite': 'SQLite database',
+    }
+
+    if ext.lower() in binary_descriptions:
+        info_parts.append(f"Description: {binary_descriptions[ext.lower()]}")
+
+    # Check if it's a new file or modified
+    try:
+        if amend:
+            # Check if file exists in parent commit
+            run_command(f'git cat-file -e HEAD^:{filename}', check=True)
+            info_parts.append("Status: Modified")
+        else:
+            # Check if file exists in HEAD
+            run_command(f'git cat-file -e HEAD:{filename}', check=True)
+            info_parts.append("Status: Modified")
+    except:
+        info_parts.append("Status: New file")
+
+    return '\n'.join(info_parts) if info_parts else "Binary file (no additional information available)"
+
 def get_git_diff(amend=False):
-    """Get the git diff of staged changes."""
+    """Get the git diff of staged changes, with binary file handling."""
     if amend:
         # For --amend, show the diff of the last commit plus any new staged changes
         # Get the parent of HEAD (or use empty tree if it's the first commit)
@@ -222,7 +316,40 @@ def get_git_diff(amend=False):
     else:
         diff = run_command('git diff --cached').strip()
 
-    return f"```\n{diff}\n```"
+    # Process the diff to add information about binary files
+    diff_lines = diff.split('\n') if diff else []
+    processed_lines = []
+    i = 0
+
+    while i < len(diff_lines):
+        line = diff_lines[i]
+
+        # Check for binary file indicators
+        if line.startswith('Binary files'):
+            # Extract filename from the binary files line
+            # Format: "Binary files a/path/file and b/path/file differ"
+            parts = line.split(' ')
+            if len(parts) >= 4:
+                file_a = parts[2].lstrip('a/')
+                file_b = parts[4].lstrip('b/')
+                # Use the 'b/' version as it's the new version
+                filename = file_b if file_b != '/dev/null' else file_a
+
+                # Add enhanced binary file information
+                processed_lines.append(line)
+                processed_lines.append(f"# Binary file: {filename}")
+
+                # Try to get more info about the binary file
+                binary_info = get_binary_file_info(filename, amend)
+                for info_line in binary_info.split('\n'):
+                    processed_lines.append(f"# {info_line}")
+        else:
+            processed_lines.append(line)
+
+        i += 1
+
+    processed_diff = '\n'.join(processed_lines) if processed_lines else diff
+    return f"```\n{processed_diff}\n```"
 
 def get_git_editor():
     """Get the configured git editor."""
