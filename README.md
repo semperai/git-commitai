@@ -125,6 +125,49 @@ git commitai --model "gpt-4o" --api-key "sk-..."
 git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "llama2"
 ```
 
+### Commit Message Templates (.gitmessage)
+
+Git Commit AI automatically reads and uses your `.gitmessage` template files to understand your project's commit conventions. This helps generate messages that match your team's style guide.
+
+The tool looks for templates in this order (first found wins):
+1. **Git config template**: Set via `git config commit.template`
+2. **Repository template**: `.gitmessage` in your repository root
+3. **Global template**: `~/.gitmessage` in your home directory
+
+#### Setting Up a Template
+
+Create a `.gitmessage` file with your project's commit guidelines:
+
+```bash
+# Create a repository-specific template
+cat > .gitmessage << 'EOF'
+# Format: <type>(<scope>): <subject>
+#
+# <type> must be one of:
+#   feat: A new feature
+#   fix: A bug fix
+#   docs: Documentation changes
+#   style: Code style changes (formatting, semicolons, etc)
+#   refactor: Code refactoring without adding features or fixing bugs
+#   test: Adding or updating tests
+#   chore: Maintenance tasks, dependency updates, etc
+#
+# <scope> is optional and indicates the module affected
+#
+# Example: feat(auth): Add OAuth2 login support
+#
+# The body should explain the motivation for the change
+EOF
+
+# Or set a global template
+git config --global commit.template ~/.gitmessage
+
+# Or set a repository-specific template
+git config commit.template .github/commit-template
+```
+
+When a template is found, Git Commit AI uses it as additional context to generate messages that follow your conventions while still adhering to Git best practices.
+
 ## 📖 Usage
 
 ```bash
@@ -162,7 +205,7 @@ These commands are unique to `git commitai` and not found in standard `git commi
 | Flag | Description | Purpose |
 |------|-------------|---------|
 | `-m, --message <context>` | Provide context for AI | **Modified behavior**: Unlike `git commit` where this sets the entire message, in `git commitai` this provides context to help the AI understand your intent |
-| `--debug` | Enable debug logging | Logs all operations to `~/.gitcommitai.debug.log` for troubleshooting. Shows git commands, API requests, and decision points |
+| `--debug` | Enable debug logging | Outputs debug information to stderr for troubleshooting. Shows git commands, API requests, and decision points |
 | `--api-key <key>` | Override API key | Temporarily use a different API key for this commit only. Overrides `GIT_COMMIT_AI_KEY` environment variable |
 | `--api-url <url>` | Override API endpoint | Use a different API endpoint for this commit. Useful for testing different providers or local models |
 | `--model <name>` | Override model name | Use a different AI model for this commit. Overrides `GIT_COMMIT_AI_MODEL` environment variable |
@@ -228,6 +271,7 @@ The following table shows all standard `git commit` flags and their support stat
 - 🎯 **Git native** - Respects your git editor, hooks, and workflow
 - 🐛 **Debug mode** - Built-in debugging for troubleshooting issues
 - 🔄 **CLI overrides** - Override API settings per-command for testing and flexibility
+- 📋 **Template support** - Automatically uses your `.gitmessage` templates for project-specific conventions
 
 ## 🧪 Examples
 
@@ -258,47 +302,63 @@ git commitai --model "gpt-4o" --api-key "sk-..."
 # Use local LLM for sensitive code
 git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "codellama"
 
-# Debug mode for troubleshooting
-git commitai --debug
-git commitai --debug -a -m "Testing auto-stage"
+# Debug mode for troubleshooting (outputs to stderr)
+git commitai --debug 2> debug.log
+git commitai --debug -a -m "Testing auto-stage" 2>&1 | tee debug.log
 
 # Combine CLI overrides with debug
 git commitai --debug --model "claude-3.5-sonnet" --api-key "sk-ant-..."
+```
 
-# Check debug log
-cat ~/.gitcommitai.debug.log
-tail -f ~/.gitcommitai.debug.log  # Watch in real-time
+### Using with .gitmessage Templates
+
+```bash
+# Create a project-specific template
+cat > .gitmessage << 'EOF'
+# Type: feat|fix|docs|style|refactor|test|chore
+# Scope: (optional) affected module
+#
+# Remember: Use imperative mood in the subject line
+EOF
+
+# Git Commit AI will automatically detect and use this template
+git add .
+git commitai
+
+# The AI will generate messages following your template format
+# Example output: "feat(auth): Add JWT token validation"
 ```
 
 ## 🐛 Debugging
 
-If you encounter issues, use the `--debug` flag to enable detailed logging:
+If you encounter issues, use the `--debug` flag to enable detailed logging to stderr:
 
 ```bash
-# Enable debug mode
+# Enable debug mode (outputs to stderr)
 git commitai --debug
 
+# Capture debug output to a file
+git commitai --debug 2> debug.log
+
+# View debug output on screen and save to file
+git commitai --debug 2>&1 | tee debug.log
+
 # Debug with other flags
-git commitai --debug -a -v
+git commitai --debug -a -v 2> debug.log
 
 # Debug with API overrides
-git commitai --debug --model "gpt-4" --api-url "https://api.openai.com/v1/chat/completions"
-
-# View the debug log
-cat ~/.gitcommitai.debug.log
-
-# Watch log in real-time
-tail -f ~/.gitcommitai.debug.log
+git commitai --debug --model "gpt-4" --api-url "https://api.openai.com/v1/chat/completions" 2> debug.log
 ```
 
-The debug log includes:
+The debug output includes:
 - All git commands executed
 - API request/response details
 - File processing information
 - Configuration and environment details (including CLI overrides)
+- Template file detection and loading
 - Error messages and stack traces
 
-When reporting bugs, please include relevant portions of the debug log.
+When reporting bugs, please include relevant portions of the debug output.
 
 ## 🤝 Contributing
 

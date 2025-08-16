@@ -44,19 +44,116 @@ def show_man_page():
     return False
 
 
+def get_git_root():
+    """Get the root directory of the git repository."""
+    try:
+        return run_git(["rev-parse", "--show-toplevel"]).strip()
+    except:
+        return os.getcwd()
+
+
+def load_gitcommitai_config():
+    """Load configuration from .gitcommitai file in the repository root.
+
+    The .gitcommitai file should contain a prompt template with placeholders:
+    - {CONTEXT} - User-provided context via -m flag
+    - {DIFF} - The git diff of changes
+    - {FILES} - The modified files with their content
+    - {GITMESSAGE} - Content from .gitmessage template if exists
+    - {AMEND_NOTE} - Note about amending if --amend is used
+    - {AUTO_STAGE_NOTE} - Note about auto-staging if -a is used
+    - {NO_VERIFY_NOTE} - Note about skipping hooks if -n is used
+    - {ALLOW_EMPTY_NOTE} - Note about empty commit if --allow-empty is used
+
+    Also supports optional model configuration.
+    """
+    debug_log("Looking for .gitcommitai configuration file")
+
+    config = {}
+
+    try:
+        git_root = get_git_root()
+        config_path = os.path.join(git_root, ".gitcommitai")
+
+        if not os.path.exists(config_path):
+            debug_log("No .gitcommitai file found")
+            return config
+
+        debug_log(f"Found .gitcommitai at: {config_path}")
+
+        with open(config_path, 'r') as f:
+            content = f.read()
+
+        # Check if it's JSON format (for backward compatibility)
+        content_stripped = content.strip()
+        if content_stripped.startswith('{'):
+            try:
+                json_config = json.loads(content)
+                # Extract only model and prompt from JSON
+                if 'model' in json_config:
+                    config['model'] = json_config['model']
+                if 'prompt' in json_config:
+                    config['prompt_template'] = json_config['prompt']
+                debug_log("Loaded .gitcommitai as JSON format")
+                return config
+            except json.JSONDecodeError:
+                debug_log("Failed to parse as JSON, treating as template")
+
+        # Check for model specification at the top of the file
+        lines = content.split('\n')
+        template_lines = []
+
+        for line in lines:
+            # Check for model specification (e.g., "model: gpt-4" or "model=gpt-4")
+            if line.strip().startswith('model:') or line.strip().startswith('model='):
+                model_value = line.split(':', 1)[1] if ':' in line else line.split('=', 1)[1]
+                config['model'] = model_value.strip()
+                debug_log(f"Found model specification: {config['model']}")
+            else:
+                template_lines.append(line)
+
+        # The rest is the prompt template
+        prompt_template = '\n'.join(template_lines).strip()
+        if prompt_template:
+            config['prompt_template'] = prompt_template
+            debug_log(f"Loaded prompt template ({len(prompt_template)} characters)")
+
+    except Exception as e:
+        debug_log(f"Error loading .gitcommitai: {e}")
+
+    return config
+
+
 def get_env_config(args):
-    """Get configuration from environment variables and command line args."""
+    """Get configuration from environment variables, .gitcommitai file, and command line args."""
     debug_log("Loading environment configuration")
 
+    # Load from .gitcommitai file first
+    repo_config = load_gitcommitai_config()
+
+    # Build final config with precedence: CLI args > env vars > .gitcommitai > defaults
     config = {
-        "api_key": args.api_key or os.environ.get("GIT_COMMIT_AI_KEY"),
-        "api_url": args.api_url or os.environ.get(
-            "GIT_COMMIT_AI_URL", "https://openrouter.ai/api/v1/chat/completions"
+        "api_key": (
+            args.api_key or
+            os.environ.get("GIT_COMMIT_AI_KEY")
         ),
-        "model": args.model or os.environ.get("GIT_COMMIT_AI_MODEL", "qwen/qwen3-coder"),
+        "api_url": (
+            args.api_url or
+            os.environ.get("GIT_COMMIT_AI_URL", "https://openrouter.ai/api/v1/chat/completions")
+        ),
+        "model": (
+            args.model or
+            os.environ.get("GIT_COMMIT_AI_MODEL") or
+            repo_config.get("model") or
+            "qwen/qwen3-coder"
+        ),
     }
 
+    # Add repository-specific configuration
+    config["repo_config"] = repo_config
+
     debug_log(f"Config loaded - URL: {config['api_url']}, Model: {config['model']}, Key present: {bool(config['api_key'])}")
+    debug_log(f"Repository config keys: {list(repo_config.keys())}")
 
     if not config["api_key"]:
         print("Error: GIT_COMMIT_AI_KEY environment variable is not set")
@@ -92,6 +189,139 @@ def run_git(args, check=True):
         if check:
             raise
         return e.stdout if e.stdout else ""
+
+
+def build_ai_prompt(repo_config, args, allow_empty=False):
+    """Build the AI prompt, incorporating repository-specific customization."""
+
+    # Check if repository has a custom prompt template
+    if repo_config.get('prompt_template'):
+        debug_log("Using custom prompt template from .gitcommitai")
+
+        # Read .gitmessage if it exists
+        gitmessage_content = read_gitmessage_template() or ""
+
+        # Prepare replacement values
+        replacements = {
+            'CONTEXT': f"Additional context from user: {args.message}" if args.message else "",
+            'GITMESSAGE': gitmessage_content,
+            'AMEND_NOTE': "Note: You are amending the previous commit." if args.amend else "",
+            'AUTO_STAGE_NOTE': "Note: Files were automatically staged using the -a flag." if args.all else "",
+            'NO_VERIFY_NOTE': "Note: Git hooks will be skipped for this commit (--no-verify)." if args.no_verify else "",
+            'ALLOW_EMPTY_NOTE': "Note: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created." if allow_empty else "",
+        }
+
+        # Start with the template
+        base_prompt = repo_config['prompt_template']
+
+        # Replace placeholders - but don't add them yet for DIFF and FILES
+        # We'll add those at the end of the function
+        for key, value in replacements.items():
+            if key not in ['DIFF', 'FILES']:
+                placeholder = '{' + key + '}'
+                if placeholder in base_prompt:
+                    base_prompt = base_prompt.replace(placeholder, value)
+
+        # Clean up any empty lines from unused placeholders
+        lines = base_prompt.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            # Remove lines that only had a placeholder that resolved to empty
+            if line.strip() and not (line.strip() in replacements.values() and not replacements.get(line.strip(), True)):
+                cleaned_lines.append(line)
+        base_prompt = '\n'.join(cleaned_lines)
+
+    else:
+        # Use default prompt
+        debug_log("Using default prompt")
+        base_prompt = """You are a git commit message generator that follows Git best practices strictly.
+
+CRITICAL RULES YOU MUST FOLLOW:
+
+1. STRUCTURE:
+   - If the change is simple and clear, use ONLY a subject line (single line commit)
+   - For complex changes that need explanation, use subject + blank line + body
+   - Never add a body unless it provides valuable context about WHY the change was made
+
+2. SUBJECT LINE (FIRST LINE):
+   - Maximum 50 characters (aim for less when possible)
+   - Start with a capital letter
+   - NO period at the end
+   - Use imperative mood (e.g., "Add", "Fix", "Update", not "Added", "Fixes", "Updated")
+   - Be concise but descriptive
+   - Think: "If applied, this commit will [your subject line]"
+
+3. BODY (ONLY if needed):
+   - Leave one blank line after the subject
+   - Wrap lines at 72 characters maximum
+   - Explain WHAT changed and WHY, not HOW (the code shows how)
+   - Focus on the motivation and context for the change
+   - Use bullet points with "-" for multiple items if needed
+
+4. GOOD SUBJECT LINE EXAMPLES:
+   - "Add user authentication module"
+   - "Fix memory leak in data processor"
+   - "Update dependencies to latest versions"
+   - "Refactor database connection logic"
+   - "Remove deprecated API endpoints"
+
+5. CODE ISSUE DETECTION:
+   After generating the message, check the code changes for potential issues.
+   If you detect any obvious problems, add warnings as Git-style comments after the commit message.
+   These warnings help the developer catch bugs before committing.
+
+   Look for these types of severe or critical issues:
+   - Hardcoded secrets
+   - Syntax errors or typos in variable names
+   - null/undefined reference errors
+   - Missing imports that will cause runtime errors
+
+   Format warnings like this:
+   # ⚠️  WARNING: [Brief description of issue]
+   # Found in: [filename]
+   # Details: [Specific concern]
+
+6. OUTPUT FORMAT:
+   - Generate the commit message following ALL formatting rules correctly
+   - Add a blank line after the message
+   - If code issues detected, add warning comments
+   - NO explanations outside of warning comments
+   - NO markdown formatting
+   - NEVER warn about commit message formatting (you should generate it correctly)
+
+Remember:
+- Most commits only need a clear subject line
+- You are responsible for generating a properly formatted message - don't warn about your own formatting
+- Only warn about actual code issues that could cause problems"""
+
+    # Add .gitmessage template context if available and not already included via template
+    if not repo_config.get('prompt_template'):
+        gitmessage_template = read_gitmessage_template()
+        if gitmessage_template:
+            base_prompt += f"""
+
+PROJECT-SPECIFIC COMMIT TEMPLATE/GUIDELINES:
+The following template or guidelines are configured for this project. Use this as additional context
+to understand the project's commit message conventions, but still follow the Git best practices above:
+
+{gitmessage_template}
+"""
+            debug_log("Added .gitmessage template to prompt context")
+
+        # Add user context
+        if args.message:
+            base_prompt += f"\n\nAdditional context from user: {args.message}"
+
+        if args.all:
+            base_prompt += "\n\nNote: Files were automatically staged using the -a flag."
+
+        if args.no_verify:
+            base_prompt += "\n\nNote: Git hooks will be skipped for this commit (--no-verify)."
+
+        if allow_empty:
+            base_prompt += "\n\nNote: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created."
+
+    return base_prompt
 
 
 def stage_all_tracked_files():
@@ -543,6 +773,58 @@ def get_git_dir():
     return run_git(["rev-parse", "--git-dir"]).strip()
 
 
+def read_gitmessage_template():
+    """Read .gitmessage template file if it exists."""
+    debug_log("Checking for .gitmessage template file")
+
+    # Check multiple possible locations in order of precedence
+    possible_paths = []
+
+    # 1. Check git config for commit.template
+    try:
+        configured_template = run_git(["config", "--get", "commit.template"], check=False).strip()
+        if configured_template:
+            # Expand ~ to home directory if present
+            if configured_template.startswith("~"):
+                configured_template = os.path.expanduser(configured_template)
+            # If not absolute path, make it relative to git root
+            elif not os.path.isabs(configured_template):
+                git_root = get_git_root()
+                configured_template = os.path.join(git_root, configured_template)
+            possible_paths.append(configured_template)
+            debug_log(f"Found configured template: {configured_template}")
+    except:
+        pass
+
+    # 2. Check for .gitmessage in repository root
+    try:
+        git_root = get_git_root()
+        repo_gitmessage = os.path.join(git_root, ".gitmessage")
+        possible_paths.append(repo_gitmessage)
+    except:
+        pass
+
+    # 3. Check for global .gitmessage in home directory
+    home_gitmessage = os.path.expanduser("~/.gitmessage")
+    possible_paths.append(home_gitmessage)
+
+    # Try to read from the first existing file
+    for path in possible_paths:
+        if path and os.path.isfile(path):
+            try:
+                with open(path, 'r') as f:
+                    content = f.read()
+                debug_log(f"Successfully read .gitmessage template from: {path}")
+                debug_log(f"Template content length: {len(content)} characters")
+                return content
+            except (IOError, OSError) as e:
+                debug_log(f"Failed to read template from {path}: {e}")
+                continue
+
+    debug_log("No .gitmessage template file found")
+    return None
+
+
 def make_api_request(config, message):
     """Make API request with retry logic."""
     debug_log(f"Making API request to {config['api_url']} with model {config['model']}")
@@ -624,9 +906,55 @@ def create_commit_message_file(
 
     commit_file = os.path.join(git_dir, "COMMIT_EDITMSG")
 
+    # Split the commit message to separate actual message from any AI-generated warnings
+    # Warnings will start with "# ⚠️  WARNING:" and should appear first in comments
+    message_lines = commit_message.split('\n')
+    actual_message = []
+    warning_comments = []
+
+    in_warnings = False
+    for line in message_lines:
+        # Check if this line is part of a warning
+        if (line.startswith('# ⚠️  WARNING:') or
+            line.startswith('# Found in:') or
+            line.startswith('# Details:') or
+            (in_warnings and line.startswith('#'))):
+            warning_comments.append(line)
+            in_warnings = True
+        elif line.strip() == '' and in_warnings:
+            # Empty line in warnings section
+            warning_comments.append(line)
+        elif line.strip() == '':
+            # Empty line not in warnings section
+            actual_message.append(line)
+            in_warnings = False
+        else:
+            in_warnings = False
+            actual_message.append(line)
+
+    # Reconstruct the actual commit message without warnings
+    clean_message = '\n'.join(actual_message).rstrip()
+
     with open(commit_file, "w") as f:
-        f.write(commit_message)
-        f.write("\n\n")
+        # Write the actual commit message
+        f.write(clean_message)
+
+        # Ensure proper spacing before comments section
+        if not clean_message.endswith('\n'):
+            f.write('\n')
+        f.write('\n')
+
+        # If there are AI-generated warnings, add them FIRST in the comment section
+        if warning_comments:
+            for line in warning_comments:
+                if line.strip():  # Only write non-empty lines
+                    f.write(f"{line}\n")
+                elif warning_comments.index(line) < len(warning_comments) - 1:
+                    # Write empty lines between warnings, but not at the end
+                    f.write("#\n")
+            f.write("#\n")  # Add separator after all warnings
+
+        # Add Git's standard template comments
         f.write("# Please enter the commit message for your changes. Lines starting\n")
         f.write("# with '#' will be ignored, and an empty message aborts the commit.\n")
         f.write("#\n")
@@ -815,6 +1143,43 @@ Examples:
   git-commitai --allow-empty      # Create an empty commit
   git-commitai --debug            # Enable debug logging
 
+Configuration:
+  Create a .gitcommitai file in your repository root to customize the AI prompt.
+
+  The file can optionally start with a model specification:
+    model: gpt-4
+
+  Then include your prompt template with placeholders:
+    {CONTEXT} - User-provided context via -m flag
+    {DIFF} - The git diff of changes
+    {FILES} - The modified files with their content
+    {GITMESSAGE} - Content from .gitmessage template if exists
+    {AMEND_NOTE} - Note about amending if --amend is used
+    {AUTO_STAGE_NOTE} - Note about auto-staging if -a is used
+    {NO_VERIFY_NOTE} - Note about skipping hooks if -n is used
+    {ALLOW_EMPTY_NOTE} - Note about empty commit if --allow-empty is used
+
+  Example .gitcommitai file:
+    model: gpt-4
+
+    You are an expert git commit message generator for our project.
+
+    Follow these rules:
+    - Use conventional commits format (feat, fix, docs, etc.)
+    - Maximum 50 characters for subject line
+    - Use imperative mood
+
+    {GITMESSAGE}
+    {CONTEXT}
+
+    Review these changes:
+    {DIFF}
+
+    Full file contents:
+    {FILES}
+
+    Generate a commit message:
+
 Quick Install:
   curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install.sh | bash
 
@@ -900,42 +1265,47 @@ For more information, visit: https://github.com/semperai/git-commitai
     if not check_staged_changes(amend=args.amend, auto_stage=args.all, allow_empty=args.allow_empty):
         sys.exit(1)
 
-    # Get configuration
+    # Get configuration (including repo-specific config)
     config = get_env_config(args)
 
-    # Build the prompt
-    prompt = """You are a git commit message generator. Generate ONLY the commit message without any additional text, explanations, or prefixes like 'Here's the commit message' or 'Sure'.
-
-The first line should be a concise summary (50 characters or less if possible).
-If needed, add a blank line and then a more detailed explanation.
-Focus on WHAT changed and WHY it changed.
-Do not include any conversational text, only the commit message itself."""
-
-    if args.message:
-        prompt += f"\n\nUser context about this commit: {args.message}"
-
-    if args.all:
-        prompt += "\n\nNote: Files were automatically staged using the -a flag."
-
-    if args.no_verify:
-        prompt += "\n\nNote: Git hooks will be skipped for this commit (--no-verify)."
-
-    if args.allow_empty:
-        prompt += "\n\nNote: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created."
+    # Build the AI prompt using repository-specific customization
+    prompt = build_ai_prompt(config["repo_config"], args, allow_empty=args.allow_empty)
 
     # Get git information
     git_diff = get_git_diff(amend=args.amend, allow_empty=args.allow_empty)
     all_files = get_staged_files(amend=args.amend, allow_empty=args.allow_empty)
 
-    prompt += f"""
+    # Handle template placeholders if using custom template
+    if config["repo_config"].get('prompt_template'):
+        # Check if template has placeholders for DIFF and FILES
+        if '{DIFF}' in prompt:
+            prompt = prompt.replace('{DIFF}', git_diff)
+        else:
+            # Append at the end if no placeholder
+            prompt += f"\n\nHere is the git diff of changes:\n\n{git_diff}"
 
-Here is the git diff:
+        if '{FILES}' in prompt:
+            prompt = prompt.replace('{FILES}', all_files)
+        else:
+            # Append at the end if no placeholder
+            prompt += f"\n\nHere are all the modified files with their content for context:\n\n{all_files}"
+
+        # Add final instruction if not already in template
+        if "Generate the commit message" not in prompt and "generate the commit message" not in prompt.lower():
+            prompt += "\n\nGenerate the commit message following the rules above:"
+    else:
+        # Default behavior - append diff and files
+        prompt += f"""
+
+Here is the git diff of changes:
 
 {git_diff}
 
-Here are all of the files for context:
+Here are all the modified files with their content for context:
 
-{all_files}"""
+{all_files}
+
+Generate the commit message following the rules above:"""
 
     # Make API request with retry logic
     commit_message = make_api_request(config, prompt)

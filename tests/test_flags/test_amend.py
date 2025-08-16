@@ -68,6 +68,7 @@ class TestAmendFeatures:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Amended commit"):

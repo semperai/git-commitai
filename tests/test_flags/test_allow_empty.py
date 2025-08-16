@@ -142,6 +142,7 @@ class TestAllowEmptyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Empty commit for release marker") as mock_api:
@@ -186,6 +187,7 @@ class TestAllowEmptyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Test") as mock_api:
@@ -217,6 +219,7 @@ class TestAllowEmptyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Amended empty commit"):
@@ -250,6 +253,7 @@ class TestAllowEmptyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Empty commit after auto-stage"):
@@ -281,6 +285,7 @@ class TestAllowEmptyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Empty commit skipping hooks"):
@@ -313,6 +318,7 @@ class TestAllowEmptyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Verbose empty commit"):
@@ -341,6 +347,7 @@ class TestAllowEmptyFlag:
                         "api_key": "test",
                         "api_url": "http://test",
                         "model": "test",
+                        "repo_config": {}
                     }
 
                     with patch("git_commitai.make_api_request", return_value="Complex empty commit") as mock_api:
@@ -416,6 +423,7 @@ class TestAllowEmptyFlag:
                     "api_key": "test",
                     "api_url": "http://test",
                     "model": "test",
+                    "repo_config": {}
                 }
 
                 with patch("git_commitai.make_api_request", return_value="Normal commit with changes"):
