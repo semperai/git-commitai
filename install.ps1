@@ -272,7 +272,8 @@ function Test-Installation {
 
     # Test git-commitai command
     try {
-        python (Get-Command git-commitai.cmd).Source --version 2>&1 | Out-Null
+        $cmd = Get-Command git-commitai -ErrorAction Stop
+        & $cmd.Path --version 2>&1 | Out-Null
         Write-Color "✓ git-commitai command found" "Green"
     } catch {
         Write-Color "⚠ git-commitai not accessible yet (restart terminal)" "Yellow"
