@@ -1007,10 +1007,10 @@ def create_commit_message_file(
 
         # If there are AI-generated warnings, add them FIRST in the comment section
         if warning_comments:
-            for line in warning_comments:
+            for idx, line in enumerate(warning_comments):
                 if line.strip():  # Only write non-empty lines
                     f.write(f"{line}\n")
-                elif warning_comments.index(line) < len(warning_comments) - 1:
+                elif idx < len(warning_comments) - 1:
                     # Write empty lines between warnings, but not at the end
                     f.write("#\n")
             f.write("#\n")  # Add separator after all warnings
