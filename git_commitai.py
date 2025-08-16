@@ -118,6 +118,8 @@ def load_gitcommitai_config():
     - {AUTO_STAGE_NOTE} - Note about auto-staging if -a is used
     - {NO_VERIFY_NOTE} - Note about skipping hooks if -n is used
     - {ALLOW_EMPTY_NOTE} - Note about empty commit if --allow-empty is used
+    - {AUTHOR_NOTE} - Note about custom author if --author is used
+    - {DATE_NOTE} - Note about custom date if --date is used
 
     Also supports optional model configuration.
     """
@@ -246,7 +248,7 @@ def run_git(args, check=True):
         return e.stdout if e.stdout else ""
 
 
-def build_ai_prompt(repo_config, args, allow_empty=False):
+def build_ai_prompt(repo_config, args, allow_empty=False, author=None, date=None):
     """Build the AI prompt, incorporating repository-specific customization."""
 
     # Check if repository has a custom prompt template
@@ -264,6 +266,8 @@ def build_ai_prompt(repo_config, args, allow_empty=False):
             'AUTO_STAGE_NOTE': "Note: Files were automatically staged using the -a flag." if args.all else "",
             'NO_VERIFY_NOTE': "Note: Git hooks will be skipped for this commit (--no-verify)." if args.no_verify else "",
             'ALLOW_EMPTY_NOTE': "Note: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created." if allow_empty else "",
+            'AUTHOR_NOTE': f"Note: Using custom author: {author}" if author else "",
+            'DATE_NOTE': f"Note: Using custom date: {date}" if date else "",
         }
 
         # Start with the template
@@ -371,6 +375,12 @@ to understand the project's commit message conventions, but still follow the Git
 
         if allow_empty:
             base_prompt += "\n\nNote: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created."
+
+        if author:
+            base_prompt += f"\n\nNote: Using custom author: {author}"
+
+        if date:
+            base_prompt += f"\n\nNote: Using custom date: {date}"
 
     return base_prompt
 
@@ -978,6 +988,8 @@ def create_commit_message_file(
     no_verify=False,
     verbose=False,
     allow_empty=False,
+    author=None,
+    date=None,
 ):
     """Create the commit message file with git template."""
     debug_log(f"Creating commit message file in {git_dir}")
@@ -1047,6 +1059,12 @@ def create_commit_message_file(
             f.write("#\n")
         if allow_empty:
             f.write("# This will be an empty commit (--allow-empty).\n")
+            f.write("#\n")
+        if author:
+            f.write(f"# Using custom author: {author}\n")
+            f.write("#\n")
+        if date:
+            f.write(f"# Using custom date: {date}\n")
             f.write("#\n")
         f.write(f"# On branch {get_current_branch()}\n")
         f.write("#\n")
@@ -1219,6 +1237,8 @@ Examples:
   git-commitai -a                 # Auto-stage all tracked files and commit
   git-commitai --amend            # Amend the previous commit with new message
   git-commitai --allow-empty      # Create an empty commit
+  git-commitai --author "Name <email@example.com>"  # Override author
+  git-commitai --date "2024-01-01T12:00:00"  # Override date
   git-commitai --debug            # Enable debug logging
 
 Configuration:
@@ -1236,6 +1256,8 @@ Configuration:
     {AUTO_STAGE_NOTE} - Note about auto-staging if -a is used
     {NO_VERIFY_NOTE} - Note about skipping hooks if -n is used
     {ALLOW_EMPTY_NOTE} - Note about empty commit if --allow-empty is used
+    {AUTHOR_NOTE} - Note about custom author if --author is used
+    {DATE_NOTE} - Note about custom date if --date is used
 
   Example .gitcommitai file:
     model: gpt-4
@@ -1249,6 +1271,8 @@ Configuration:
 
     {GITMESSAGE}
     {CONTEXT}
+    {AUTHOR_NOTE}
+    {DATE_NOTE}
 
     Review these changes:
     {DIFF}
@@ -1296,6 +1320,14 @@ For more information, visit: https://github.com/semperai/git-commitai
         "--allow-empty",
         action="store_true",
         help="Allow creating an empty commit",
+    )
+    parser.add_argument(
+        "--author",
+        help="Override author information (format: 'Name <email@example.com>')",
+    )
+    parser.add_argument(
+        "--date",
+        help="Override author date (format: 'YYYY-MM-DD HH:MM:SS' or ISO 8601)",
     )
     parser.add_argument(
         "--debug",
@@ -1347,7 +1379,8 @@ For more information, visit: https://github.com/semperai/git-commitai
     config = get_env_config(args)
 
     # Build the AI prompt using repository-specific customization
-    prompt = build_ai_prompt(config["repo_config"], args, allow_empty=args.allow_empty)
+    prompt = build_ai_prompt(config["repo_config"], args, allow_empty=args.allow_empty,
+                            author=args.author, date=args.date)
 
     # Get git information
     git_diff = get_git_diff(amend=args.amend, allow_empty=args.allow_empty)
@@ -1400,6 +1433,8 @@ Generate the commit message following the rules above:"""
         no_verify=args.no_verify,
         verbose=args.verbose,
         allow_empty=args.allow_empty,
+        author=args.author,
+        date=args.date,
     )
 
     # Get modification time before editing
@@ -1440,6 +1475,12 @@ Generate the commit message following the rules above:"""
 
         if args.allow_empty:
             commit_cmd.append("--allow-empty")
+
+        if args.author:
+            commit_cmd.extend(["--author", args.author])
+
+        if args.date:
+            commit_cmd.extend(["--date", args.date])
 
         commit_cmd.extend(["-F", commit_file])
 

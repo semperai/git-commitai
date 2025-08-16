@@ -384,8 +384,8 @@ The following table shows all standard `git commit` flags and their support stat
 | `--allow-empty-message` | Allow commits with empty message | ❌ Not supported |
 | `--no-verify, -n` | Skip pre-commit and commit-msg hooks | ✅ **Supported** |
 | `-e, --edit` | Force edit of commit message | ❌ Not supported |
-| `--author=<author>` | Override author information | ❌ Not supported |
-| `--date=<date>` | Override author date | ❌ Not supported |
+| `--author=<author>` | Override author information | ✅ **Supported** |
+| `--date=<date>` | Override author date | ✅ **Supported** |
 | `--cleanup=<mode>` | Set commit message cleanup mode | ❌ Not supported |
 | `--status` | Include git status in commit editor | ❌ Not supported |
 | `--no-status` | Don't include git status in commit editor | ❌ Not supported |
@@ -445,6 +445,12 @@ git commitai --allow-empty -m "Trigger deployment"
 
 # Review changes while committing
 git commitai -v
+
+# Override author information
+git commitai --author "John Doe <john@example.com>"
+
+# Override commit date
+git commitai --date "2024-01-01 12:00:00"
 
 # Test with a different model
 git commitai --model "gpt-4o" --api-key "sk-..."

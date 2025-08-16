@@ -13,6 +13,8 @@ git-commitai \- Generate AI-powered git commit messages
 [\fB\-n\fR|\fB\-\-no\-verify\fR]
 [\fB\-v\fR|\fB\-\-verbose\fR]
 [\fB\-\-allow\-empty\fR]
+[\fB\-\-author\fR \fIauthor\fR]
+[\fB\-\-date\fR \fIdate\fR]
 [\fB\-\-debug\fR]
 [\fB\-\-api\-key\fR \fIkey\fR]
 [\fB\-\-api\-url\fR \fIurl\fR]
@@ -80,6 +82,37 @@ The diff is displayed as comments after the commit message template.
 .BR \-\-allow\-empty
 Allow creating a commit with no changes.
 Useful for triggering CI/CD pipelines or creating marker commits.
+
+.TP
+.BR \-\-author " " \fIauthor\fR
+Override the commit author.
+Format: \fI"Name <email@example.com>"\fR
+The standard git formats are accepted, including:
+.RS
+.IP \(bu 2
+\fIName <email@example.com>\fR - Full format
+.IP \(bu 2
+\fI<email@example.com>\fR - Email only (uses configured name)
+.IP \(bu 2
+\fIName\fR - Name only (uses configured email)
+.RE
+
+.TP
+.BR \-\-date " " \fIdate\fR
+Override the author date used in the commit.
+Accepts various date formats:
+.RS
+.IP \(bu 2
+ISO 8601: \fI2024-01-15T14:30:00\fR
+.IP \(bu 2
+RFC 2822: \fIMon, 15 Jan 2024 14:30:00 +0000\fR
+.IP \(bu 2
+Unix timestamp: \fI@1705329000\fR
+.IP \(bu 2
+Relative: \fI2 days ago\fR, \fIlast week\fR
+.IP \(bu 2
+Simple: \fI2024-01-15 14:30:00\fR
+.RE
 
 .TP
 .BR \-h ", " \-\-help
@@ -171,6 +204,18 @@ $ git commitai -n
 
 # Show diff in editor
 $ git commitai -v
+
+# Override author information
+$ git commitai --author "Jane Doe <jane@example.com>"
+
+# Set a specific commit date
+$ git commitai --date "2024-01-01 12:00:00"
+
+# Use relative date
+$ git commitai --date "2 weeks ago"
+
+# Combine author and date overrides
+$ git commitai --author "Bot <bot@ci.com>" --date "@1705329000"
 .fi
 
 .SS API Configuration
@@ -200,7 +245,7 @@ $ git commitai --debug 2> debug.log
 $ git commitai --debug 2>&1 | tee debug.log
 
 # Debug with other options
-$ git commitai --debug -a -v 2> debug.log
+$ git commitai --debug -a -v --author "Test <test@example.com>" 2> debug.log
 .fi
 
 .SS Using Templates
@@ -220,6 +265,33 @@ $ git commitai
 # templates or global ~/.gitmessage file
 .fi
 
+.SS Custom .gitcommitai Configuration
+.nf
+# Create a .gitcommitai file with custom prompt
+$ cat > .gitcommitai << 'EOF'
+model: gpt-4
+
+You are a commit message generator for our project.
+Use conventional commits format.
+
+{CONTEXT}
+{AUTHOR_NOTE}
+{DATE_NOTE}
+
+Changes:
+{DIFF}
+
+Files:
+{FILES}
+
+Generate the commit message:
+EOF
+
+# Use with author/date overrides
+$ git commitai --author "CI Bot <ci@example.com>" --date "now"
+# The AI will be informed about the custom author and date
+.fi
+
 .SH DEBUGGING
 When the \fB--debug\fR flag is enabled, detailed logging information is output to stderr. This includes:
 
@@ -233,6 +305,8 @@ File processing information
 Configuration and environment details
 .IP \(bu 2
 Template file detection and loading (shows which template was chosen and why)
+.IP \(bu 2
+Author and date override information
 .IP \(bu 2
 Error messages and stack traces
 
@@ -254,6 +328,11 @@ When reporting bugs, include relevant portions of the debug output.
 .B .gitmessage
 Project-specific or global commit message template file.
 Repository \fB.gitmessage\fR files take precedence over all other templates.
+
+.TP
+.B .gitcommitai
+Project-specific AI prompt configuration file.
+Can include custom prompt templates with placeholders for context, author, date, and other metadata.
 
 .TP
 .B .git/COMMIT_EDITMSG
@@ -300,7 +379,9 @@ The following standard \fBgit commit\fR options are not yet supported:
 .IP \(bu 2
 \fB-F\fR, \fB--file\fR - Read message from file
 .IP \(bu 2
-\fB--author\fR, \fB--date\fR - Override commit metadata
+\fB--reset-author\fR - Reset author information (use \fB--author\fR instead)
+.IP \(bu 2
+\fB--cleanup\fR - Commit message cleanup mode
 .IP \(bu 2
 \fB-S\fR, \fB--gpg-sign\fR - GPG signing
 .IP \(bu 2
