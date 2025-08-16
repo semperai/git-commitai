@@ -848,7 +848,7 @@ def read_gitmessage_template():
                 configured_template = os.path.join(git_root, configured_template)
             possible_paths.append(configured_template)
             debug_log(f"Found configured template: {configured_template}")
-    except:
+    except Exception:
         pass
 
     # 2. Check for .gitmessage in repository root
@@ -856,7 +856,7 @@ def read_gitmessage_template():
         git_root = get_git_root()
         repo_gitmessage = os.path.join(git_root, ".gitmessage")
         possible_paths.append(repo_gitmessage)
-    except:
+    except Exception:
         pass
 
     # 3. Check for global .gitmessage in home directory
