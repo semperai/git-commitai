@@ -1,0 +1,266 @@
+.\" Manpage for git-commitai
+.\" Contact: https://github.com/semperai/git-commitai/issues
+.TH GIT-COMMITAI 1 "January 2025" "1.0.5" "Git Commit AI Manual"
+
+.SH NAME
+git\-commitai \- Generate intelligent git commit messages using AI
+
+.SH SYNOPSIS
+.B git commitai
+[\fI\-a\fR]
+[\fI\-m\fR \fImessage\fR]
+[\fI\-n\fR]
+[\fI\-v\fR]
+[\fI\-\-amend\fR]
+[\fI\-\-allow\-empty\fR]
+[\fI\-\-help\fR]
+[\fI\-\-version\fR]
+
+.SH DESCRIPTION
+.B git\-commitai
+analyzes your staged git changes and generates meaningful, conventional commit messages using AI. It integrates seamlessly with your existing git workflow, supporting the same flags as
+.BR git\-commit (1)
+while adding AI-powered message generation.
+
+The tool examines your code changes, understands the context, and creates descriptive commit messages following best practices. After generating a message, it opens your configured git editor for review and modification before committing.
+
+.SH OPTIONS
+.TP
+.BR \-a ", " \-\-all
+Automatically stage all tracked, modified files before committing. This stages files that Git already knows about and have been modified or deleted, but does NOT add untracked files. Equivalent to \fBgit add \-u\fR before committing.
+Cannot be used with \fB\-\-amend\fR.
+
+.TP
+.BR \-m " " \fImessage\fR ", " \-\-message " " \fImessage\fR
+Provide additional context about the commit to help the AI generate a more accurate message. This context is used to understand the intent behind the changes but is not included in the final commit message.
+
+.TP
+.BR \-n ", " \-\-no\-verify
+Skip pre-commit and commit-msg hooks. Useful for work-in-progress commits, emergency fixes, or when hooks are causing issues. Use with caution as hooks often enforce important project standards.
+
+.TP
+.BR \-v ", " \-\-verbose
+Display the full diff of changes below the commit message in the editor. The diff appears after a scissors line and is not included in the commit. Helpful for reviewing complex changes while writing the message.
+
+.TP
+.B \-\-amend
+Replace the most recent commit with a new one. Generates a new AI message based on all changes (previous commit plus any newly staged changes). Cannot be used with \fB\-a\fR flag.
+
+.TP
+.B \-\-allow\-empty
+Create a commit even when there are no staged changes. Useful for creating marker commits, triggering CI/CD pipelines, or documenting milestones. The AI will generate an appropriate message explaining the empty commit.
+
+.TP
+.B \-\-version
+Display version information and exit.
+
+.TP
+.BR \-h ", " \-\-help
+Display this help message and exit.
+
+.SH ENVIRONMENT VARIABLES
+.TP
+.B GIT_COMMIT_AI_KEY
+\fB(Required)\fR Your API key for the AI service. Must be set before using git-commitai.
+
+.TP
+.B GIT_COMMIT_AI_URL
+The API endpoint URL for your AI provider. Defaults to OpenAI's endpoint if not set.
+.br
+Default: \fIhttps://api.openai.com/v1/chat/completions\fR
+
+.TP
+.B GIT_COMMIT_AI_MODEL
+The AI model to use for generating commit messages.
+.br
+Default: \fIgpt-4o\fR
+
+.TP
+.B GIT_EDITOR
+The editor to use for editing commit messages. Falls back to EDITOR, then git's core.editor config, then vi.
+
+.SH EXAMPLES
+.SS Basic Usage
+Stage your changes and generate a commit message:
+.PP
+.nf
+$ git add file.js
+$ git commitai
+.fi
+
+.SS With Additional Context
+Provide context to help the AI understand your changes:
+.PP
+.nf
+$ git commitai \-m "Refactored the authentication system for better security"
+.fi
+
+.SS Auto-stage and Commit
+Automatically stage all modified tracked files:
+.PP
+.nf
+$ vim existing\-file.py
+$ git commitai \-a
+.fi
+
+.SS Skip Hooks
+Bypass pre-commit and commit-msg hooks:
+.PP
+.nf
+$ git commitai \-n
+$ git commitai \-a \-n \-m "WIP: experimental feature"
+.fi
+
+.SS Verbose Mode
+Review changes while writing the commit message:
+.PP
+.nf
+$ git commitai \-v
+$ git commitai \-a \-v
+.fi
+
+.SS Amend Previous Commit
+Replace the last commit with a new message:
+.PP
+.nf
+$ git commitai \-\-amend
+$ git commitai \-\-amend \-m "Fixed the bug properly this time"
+.fi
+
+.SS Empty Commits
+Create a commit with no changes:
+.PP
+.nf
+$ git commitai \-\-allow\-empty \-m "Trigger CI pipeline rebuild"
+$ git commitai \-\-allow\-empty \-m "Release marker for v2.0.0"
+.fi
+
+.SS Combining Flags
+Multiple flags can be combined:
+.PP
+.nf
+$ git commitai \-a \-n \-v
+$ git commitai \-\-amend \-v
+$ git commitai \-\-allow\-empty \-n
+.fi
+
+.SH PROVIDER CONFIGURATION
+.SS OpenRouter (Recommended)
+.nf
+export GIT_COMMIT_AI_KEY="sk\-or\-v1\-..."
+export GIT_COMMIT_AI_URL="https://openrouter.ai/api/v1/chat/completions"
+export GIT_COMMIT_AI_MODEL="anthropic/claude\-3.5\-sonnet"
+.fi
+
+.SS OpenAI
+.nf
+export GIT_COMMIT_AI_KEY="sk\-..."
+export GIT_COMMIT_AI_URL="https://api.openai.com/v1/chat/completions"
+export GIT_COMMIT_AI_MODEL="gpt\-4o"
+.fi
+
+.SS Anthropic Claude
+.nf
+export GIT_COMMIT_AI_KEY="sk\-ant\-..."
+export GIT_COMMIT_AI_URL="https://api.anthropic.com/v1/messages"
+export GIT_COMMIT_AI_MODEL="claude\-3\-opus\-20240229"
+.fi
+
+.SS Local LLMs (Ollama)
+.nf
+export GIT_COMMIT_AI_KEY="not\-needed"
+export GIT_COMMIT_AI_URL="http://localhost:11434/v1/chat/completions"
+export GIT_COMMIT_AI_MODEL="llama2"
+.fi
+
+.SH HOW IT WORKS
+.IP 1. 4
+Analyzes staged changes using \fBgit diff \-\-cached\fR
+.IP 2. 4
+Detects file types and handles binary files appropriately
+.IP 3. 4
+Gathers full file contents for better context understanding
+.IP 4. 4
+Sends the context to your configured AI model
+.IP 5. 4
+Opens your git editor with the generated message
+.IP 6. 4
+Commits on save, aborts on quit without saving
+
+.SH EDITOR INTEGRATION
+The tool uses your configured git editor. Common editor commands:
+
+.TP
+.B vim
+\fI:wq\fR to save and commit, \fI:q!\fR to abort
+
+.TP
+.B nano
+\fICtrl+O, Enter, Ctrl+X\fR to save and commit, \fICtrl+X\fR to abort
+
+.TP
+.B emacs
+\fICtrl+X Ctrl+S, Ctrl+X Ctrl+C\fR to save and commit
+
+.TP
+.B VS Code
+\fICtrl+S, Ctrl+W\fR (or Cmd on Mac) to save and commit
+
+.SH EXIT STATUS
+.TP
+.B 0
+Successful commit
+
+.TP
+.B 1
+General error or commit aborted by user
+
+.TP
+.B 128
+Not in a git repository
+
+.SH FILES
+.TP
+.I ~/.bashrc, ~/.zshrc
+Shell configuration files where environment variables should be set
+
+.TP
+.I .git/COMMIT_EDITMSG
+Temporary file containing the commit message during editing
+
+.TP
+.I .git/config
+Repository-specific git configuration
+
+.TP
+.I ~/.gitconfig
+Global git configuration
+
+.SH NOTES
+.IP \(bu 2
+The \fB\-a\fR flag only stages tracked files, not new untracked files
+.IP \(bu 2
+Binary files are detected and handled appropriately with metadata instead of content
+.IP \(bu 2
+Empty commits require the \fB\-\-allow\-empty\fR flag
+.IP \(bu 2
+Cost varies by model - GPT-3.5-turbo is economical for simple changes
+.IP \(bu 2
+The AI sees both the diff and full file contents for context
+
+.SH BUGS
+Report bugs at: https://github.com/semperai/git-commitai/issues
+
+.SH AUTHOR
+Semper AI
+
+.SH COPYRIGHT
+Copyright (C) 2025 Semper AI. License: MIT
+
+.SH SEE ALSO
+.BR git (1),
+.BR git\-commit (1),
+.BR git\-add (1),
+.BR git\-diff (1)
+
+Full documentation at: https://github.com/semperai/git-commitai
