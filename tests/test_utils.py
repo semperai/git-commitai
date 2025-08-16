@@ -68,7 +68,6 @@ class TestGitUtilities:
     def test_run_command_failure(self):
         """Test command execution failure."""
         with patch("subprocess.run") as mock_run:
-            import subprocess
             mock_run.side_effect = subprocess.CalledProcessError(1, "cmd")
 
             with pytest.raises(subprocess.CalledProcessError):

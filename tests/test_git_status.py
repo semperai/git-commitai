@@ -97,7 +97,6 @@ class TestGitStatus:
 
             with patch("sys.stdout", new=StringIO()) as fake_out:
                 git_commitai.show_git_status()
-                output = fake_out.getvalue()
 
 
 class TestCheckStagedChanges:

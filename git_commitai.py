@@ -4,6 +4,7 @@ import os
 import sys
 import json
 import subprocess
+import shlex
 import argparse
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
@@ -624,7 +625,8 @@ def create_commit_message_file(
 def open_editor(filepath, editor):
     """Open file in editor and wait for it to close."""
     try:
-        subprocess.run([editor, filepath])
+        cmd = shlex.split(editor) + [filepath]
+        subprocess.run(cmd)
     except Exception:
         print(f"Error: Failed to open editor: {editor}")
         sys.exit(1)
@@ -675,8 +677,8 @@ Quick Install:
 
 Environment variables:
   GIT_COMMIT_AI_KEY     Your API key (required)
-  GIT_COMMIT_AI_URL     API endpoint URL (default: OpenAI)
-  GIT_COMMIT_AI_MODEL   Model to use (default: gpt-4o)
+  GIT_COMMIT_AI_URL     API endpoint URL (default: OpenRouter)
+  GIT_COMMIT_AI_MODEL   Model to use (default: qwen/qwen3-coder)
 
 For full documentation, run: man git-commitai
 For more information, visit: https://github.com/semperai/git-commitai

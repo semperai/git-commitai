@@ -110,7 +110,7 @@ After installation, the script will guide you through setting up your API creden
 # Example with OpenRouter (recommended)
 export GIT_COMMIT_AI_KEY="sk-or-v1-..."
 export GIT_COMMIT_AI_URL="https://openrouter.ai/api/v1/chat/completions"
-export GIT_COMMIT_AI_MODEL="anthropic/claude-3.5-sonnet"
+export GIT_COMMIT_AI_MODEL="qwen/qwen3-coder"
 ```
 
 Add these to your `~/.bashrc` or `~/.zshrc` to make them permanent.
