@@ -447,7 +447,7 @@ def make_api_request(config, message):
         print(f"Error: Failed to parse API response: {e}")
         sys.exit(1)
 
-def create_commit_message_file(git_dir, commit_message, amend=False, auto_staged=False, no_verify=False):
+def create_commit_message_file(git_dir, commit_message, amend=False, auto_staged=False, no_verify=False, verbose=False):
     """Create the commit message file with git template."""
     commit_file = os.path.join(git_dir, 'COMMIT_EDITMSG')
 
@@ -499,6 +499,37 @@ def create_commit_message_file(git_dir, commit_message, amend=False, auto_staged
                     f.write(f'# {line}\n')
         f.write('#\n')
 
+        # Add verbose diff if requested
+        if verbose:
+            f.write('# ------------------------ >8 ------------------------\n')
+            f.write('# Do not modify or remove the line above.\n')
+            f.write('# Everything below it will be ignored.\n')
+            f.write('#\n')
+            f.write('# Diff of changes to be committed:\n')
+            f.write('#\n')
+
+            # Get the appropriate diff
+            if amend:
+                # For amend, show diff from parent to current state
+                try:
+                    parent = run_command('git rev-parse HEAD^').strip()
+                    diff_output = run_command(f'git diff {parent}..HEAD')
+                    # Also include any newly staged changes
+                    staged_diff = run_command('git diff --cached')
+                    if staged_diff.strip():
+                        diff_output += '\n# Additional staged changes:\n' + staged_diff
+                except:
+                    # First commit or other issue, just show staged
+                    diff_output = run_command('git diff --cached')
+            else:
+                # Normal commit, show staged changes
+                diff_output = run_command('git diff --cached')
+
+            # Add diff as comments
+            if diff_output:
+                for line in diff_output.split('\n'):
+                    f.write(f'# {line}\n')
+
     return commit_file
 
 def open_editor(filepath, editor):
@@ -541,7 +572,8 @@ Examples:
   git-commitai --amend            # Amend the previous commit with new message
   git-commitai --amend -m "fix"   # Amend with context
   git-commitai -n                 # Skip git hooks (pre-commit, commit-msg)
-  git-commitai -a -n              # Auto-stage and skip hooks
+  git-commitai -v                 # Show diff in editor below commit message
+  git-commitai -a -n -v           # Combine multiple flags
 
 Environment variables:
   GIT_COMMIT_AI_KEY     Your API key (required)
@@ -555,7 +587,8 @@ For more information, visit: https://github.com/semperai/git-commitai
     parser.add_argument('--amend', action='store_true', help='Amend the previous commit')
     parser.add_argument('-a', '--all', action='store_true', help='Automatically stage all tracked, modified files')
     parser.add_argument('-n', '--no-verify', action='store_true', help='Skip pre-commit and commit-msg hooks')
-    parser.add_argument('--version', action='version', version='git-commitai 1.0.3')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Show diff of changes in the editor')
+    parser.add_argument('--version', action='version', version='git-commitai 1.0.4')
     args = parser.parse_args()
 
     # Check if in a git repository first
@@ -622,7 +655,8 @@ Here are all of the files for context:
         commit_message,
         amend=args.amend,
         auto_staged=args.all,
-        no_verify=args.no_verify
+        no_verify=args.no_verify,
+        verbose=args.verbose
     )
 
     # Get modification time before editing
