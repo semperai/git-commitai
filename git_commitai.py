@@ -102,7 +102,7 @@ def get_git_root():
     """Get the root directory of the git repository."""
     try:
         return run_git(["rev-parse", "--show-toplevel"]).strip()
-    except:
+    except subprocess.CalledProcessError:
         return os.getcwd()
 
 
@@ -172,7 +172,7 @@ def load_gitcommitai_config():
             config['prompt_template'] = prompt_template
             debug_log(f"Loaded prompt template ({len(prompt_template)} characters)")
 
-    except Exception as e:
+    except (OSError, IOError, UnicodeDecodeError, subprocess.CalledProcessError) as e:
         debug_log(f"Error loading .gitcommitai: {e}")
 
     return config
