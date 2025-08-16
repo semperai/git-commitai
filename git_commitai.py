@@ -733,29 +733,51 @@ def open_editor(filepath, editor):
         sys.exit(1)
 
 
-def is_commit_message_empty(filepath):
-    """Check if commit message is empty (ignoring comments)."""
-    debug_log(f"Checking if commit message is empty: {filepath}")
+def strip_comments_from_message(filepath):
+    """Read commit message file and return content without comment lines."""
+    debug_log(f"Stripping comments from message file: {filepath}")
 
+    non_comment_lines = []
     try:
         with open(filepath, "r") as f:
             for line in f:
-                # Strip only trailing whitespace to preserve intentional indentation
-                line = line.rstrip("\n\r")
-                # Skip empty lines
-                if not line or not line.strip():
-                    continue
-                # Check if this line is a comment (accounting for leading whitespace)
+                # Check if line starts with # (ignoring leading whitespace)
                 if not line.lstrip().startswith("#"):
-                    # Found actual content (non-comment, non-empty line)
-                    debug_log("Commit message has content")
-                    return False
-        debug_log("Commit message is empty")
-        return True
+                    # Preserve the line as-is (including trailing whitespace/newlines)
+                    non_comment_lines.append(line)
+
+        # Join lines and strip trailing whitespace from the entire message
+        message = "".join(non_comment_lines).rstrip()
+        debug_log(f"Message after stripping comments: {len(message)} characters")
+        return message
     except (IOError, OSError) as e:
         debug_log(f"Error reading commit message file: {e}")
-        # More specific exception handling to avoid bare except
-        return True
+        return ""
+
+
+def is_commit_message_empty(filepath):
+    """Check if commit message is empty (ignoring comments)."""
+    message = strip_comments_from_message(filepath)
+    return len(message) == 0
+
+
+def write_clean_commit_message(filepath):
+    """Write the commit message back without comments for git to use."""
+    debug_log(f"Writing clean commit message to: {filepath}")
+
+    message = strip_comments_from_message(filepath)
+
+    # Write the clean message back to the file
+    try:
+        with open(filepath, "w") as f:
+            f.write(message)
+            if message and not message.endswith("\n"):
+                f.write("\n")
+        debug_log("Clean commit message written")
+    except (IOError, OSError) as e:
+        debug_log(f"Error writing clean commit message: {e}")
+        print(f"Error: Failed to write commit message: {e}")
+        sys.exit(1)
 
 
 def main():
@@ -944,6 +966,9 @@ Here are all of the files for context:
         debug_log("Commit aborted - empty message")
         print("Aborting commit due to empty commit message.")
         sys.exit(1)
+
+    # Clean the commit message file by removing comments
+    write_clean_commit_message(commit_file)
 
     # Perform the commit
     try:
