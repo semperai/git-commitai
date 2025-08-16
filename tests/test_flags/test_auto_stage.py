@@ -94,7 +94,7 @@ class TestAutoStageFlag:
     def test_create_commit_message_file_with_auto_staged(self):
         """Test that commit message file notes auto-staging."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = "M\tfile1.txt\nM\tfile2.txt"
 
                 with tempfile.TemporaryDirectory() as tmpdir:

@@ -127,7 +127,7 @@ class TestCommitMessageFileCreation:
     def test_create_commit_message_file_with_comments(self):
         """Test that commit message file is created with proper git-style comments."""
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = "M\tfile1.txt\nA\tfile2.txt"
 
                 with tempfile.TemporaryDirectory() as tmpdir:
@@ -159,7 +159,7 @@ class TestCommitMessageFileCreation:
     def test_comments_properly_prefixed(self):
         """Test that all generated comments have # prefix."""
         with patch("git_commitai.get_current_branch", return_value="feature-branch"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = ""
 
                 with tempfile.TemporaryDirectory() as tmpdir:

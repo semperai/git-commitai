@@ -57,21 +57,50 @@ class TestGitUtilities:
             mock_run.return_value = "/path/to/.git"
             assert git_commitai.get_git_dir() == "/path/to/.git"
 
-    def test_run_command_success(self):
-        """Test successful command execution."""
+    def test_run_git_success(self):
+        """Test successful git command execution."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value.stdout = "output"
-            mock_run.return_value.returncode = 0
-            result = git_commitai.run_command("echo test")
-            assert result == "output"
+            mock_result = subprocess.CompletedProcess(
+                args=["git", "status"],
+                returncode=0,
+                stdout="On branch main",
+                stderr=""
+            )
+            mock_run.return_value = mock_result
 
-    def test_run_command_failure(self):
-        """Test command execution failure."""
+            result = git_commitai.run_git(["status"])
+            assert result == "On branch main"
+            mock_run.assert_called_once_with(
+                ["git", "status"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+    def test_run_git_failure(self):
+        """Test git command execution failure."""
         with patch("subprocess.run") as mock_run:
-            mock_run.side_effect = subprocess.CalledProcessError(1, "cmd")
+            mock_run.side_effect = subprocess.CalledProcessError(
+                1, ["git", "invalid-command"], stderr="git: 'invalid-command' is not a git command"
+            )
 
             with pytest.raises(subprocess.CalledProcessError):
-                git_commitai.run_command("failing command", check=True)
+                git_commitai.run_git(["invalid-command"], check=True)
+
+    def test_run_git_no_check(self):
+        """Test git command with check=False."""
+        with patch("subprocess.run") as mock_run:
+            # When check=False, CalledProcessError is not raised
+            mock_result = subprocess.CompletedProcess(
+                args=["git", "status"],
+                returncode=1,
+                stdout="error output",
+                stderr=""
+            )
+            mock_run.return_value = mock_result
+
+            result = git_commitai.run_git(["status"], check=False)
+            assert result == "error output"
 
 
 class TestBinaryFileInfo:
@@ -131,6 +160,13 @@ class TestOpenEditor:
         with patch("subprocess.run") as mock_run:
             git_commitai.open_editor("/tmp/file", "vim")
             mock_run.assert_called_once_with(["vim", "/tmp/file"])
+
+    def test_open_editor_with_complex_editor(self):
+        """Test opening editor with complex command (e.g., 'code --wait')."""
+        with patch("subprocess.run") as mock_run:
+            with patch("git_commitai.shlex.split", return_value=["code", "--wait"]):
+                git_commitai.open_editor("/tmp/file", "code --wait")
+                mock_run.assert_called_once_with(["code", "--wait", "/tmp/file"])
 
     def test_open_editor_failure(self):
         """Test handling editor open failure."""

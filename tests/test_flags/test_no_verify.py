@@ -1,5 +1,6 @@
 """Tests for -n/--no-verify hook skipping functionality."""
 
+import tempfile
 from unittest.mock import patch
 
 import git_commitai
@@ -134,9 +135,8 @@ class TestNoVerifyFlag:
 
     def test_create_commit_message_file_with_no_verify(self):
         """Test that commit message file notes when hooks will be skipped."""
-        import tempfile
         with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_command") as mock_run:
+            with patch("git_commitai.run_git") as mock_run:
                 mock_run.return_value = "M\tfile1.txt"
 
                 with tempfile.TemporaryDirectory() as tmpdir:

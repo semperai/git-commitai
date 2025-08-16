@@ -69,21 +69,6 @@ def run_git(args, check=True):
         return e.stdout if e.stdout else ""
 
 
-def run_command(cmd, check=True):
-    """Run a shell command and return output. Only for simple, safe commands without user input."""
-    # This function is kept for backward compatibility with safe, static commands
-    # It should ONLY be used with hardcoded command strings that don't include user input
-    try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, check=check
-        )
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        if check:
-            raise
-        return e.stdout if e.stdout else ""
-
-
 def stage_all_tracked_files():
     """Stage all tracked, modified files (equivalent to git add -u)."""
     try:
