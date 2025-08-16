@@ -387,34 +387,37 @@ class TestGitMessageTemplate:
         repo_content = "# This is the repo template that should be used"
         config_content = "# This configured template should NOT be used"
 
-        with patch("git_commitai.run_git") as mock_run:
-            def side_effect(args, check=True):
-                if "config" in args and "--get" in args and "commit.template" in args:
-                    return "/user/configured/template"  # User has configured template
-                elif "rev-parse" in args and "--show-toplevel" in args:
-                    return "/repo/root"
-                return ""
+        # First patch get_git_root to return a consistent value
+        with patch("git_commitai.get_git_root", return_value="/repo/root"):
+            # Then patch run_git for the config check
+            with patch("git_commitai.run_git") as mock_run:
+                def run_git_side_effect(args, check=True):
+                    if "config" in args and "--get" in args and "commit.template" in args:
+                        return "/user/configured/template"
+                    return ""
 
-            mock_run.side_effect = side_effect
+                mock_run.side_effect = run_git_side_effect
 
-            with patch("os.path.isfile") as mock_isfile:
-                def isfile_side_effect(path):
-                    # Both files exist
-                    return path in ["/repo/root/.gitmessage", "/user/configured/template"]
+                # Key: patch os.path at the git_commitai module level
+                # This is crucial because git_commitai imports os and uses os.path.isfile
+                with patch.object(git_commitai.os.path, 'isfile') as mock_isfile:
+                    # Setup isfile mock
+                    def isfile_side_effect(path):
+                        return path in ["/repo/root/.gitmessage", "/user/configured/template"]
 
-                mock_isfile.side_effect = isfile_side_effect
+                    mock_isfile.side_effect = isfile_side_effect
 
-            def mock_file_open(path, mode='r'):
-                if path == "/repo/root/.gitmessage":
-                    return mock_open(read_data=repo_content)()
-                elif path == "/user/configured/template":
-                    return mock_open(read_data=config_content)()
-                raise FileNotFoundError(f"No such file: {path}")
+                    # Mock file opening
+                    def mock_file_open(filename, mode='r'):
+                        if filename == "/repo/root/.gitmessage":
+                            return mock_open(read_data=repo_content)()
+                        elif filename == "/user/configured/template":
+                            return mock_open(read_data=config_content)()
+                        raise FileNotFoundError(f"No such file: {filename}")
 
-            with patch("builtins.open", side_effect=mock_file_open):
-                result = git_commitai.read_gitmessage_template()
+                    with patch("builtins.open", side_effect=mock_file_open):
+                        result = git_commitai.read_gitmessage_template()
 
-                # Should use repo template, not configured one
-                assert result == repo_content
-                assert "repo template that should be used" in result
-                assert "configured template should NOT be used" not in result
+                        # Should use repo template, not configured one
+                        assert result == repo_content
+                        assert "repo template that should be used" in result
