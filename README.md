@@ -73,9 +73,12 @@
 - 📊 **Context aware** - Includes both the diff and full file contents for better understanding
 - 💬 **Additional context support** - Optional `-m` flag for providing extra context about your changes
 - 🔄 **Amend support** - Use `--amend` to update the previous commit with AI-generated messages
+- 🚀 **Auto-staging** - Use `-a` to automatically stage all tracked, modified files
 - 🔒 **Binary file aware** - Intelligently handles binary files without breaking
+- ⚡ **Hook skipping** - Use `-n` to bypass pre-commit hooks when needed
+- 👀 **Verbose mode** - Use `-v` to see the full diff in your editor
 
-## Installation
+## 📦 Installation
 
 ### Quick Install
 
@@ -111,7 +114,7 @@ chmod +x git_commitai.py
 ./git_commitai.py
 ```
 
-## Configuration
+## ⚙️ Configuration
 
 Set up your environment variables based on your AI provider:
 
@@ -171,7 +174,22 @@ export GIT_COMMIT_AI_MODEL="gpt-4"
 ```
 </details>
 
-## Usage
+## 🚀 Usage
+
+### Command Line Options
+
+```bash
+git-commitai [options]
+
+Options:
+  -m, --message TEXT    Additional context about the commit
+  -a, --all            Automatically stage all tracked, modified files
+  -n, --no-verify      Skip pre-commit and commit-msg hooks
+  -v, --verbose        Show diff of changes in the editor
+  --amend              Amend the previous commit
+  --version            Show version information
+  -h, --help           Show help message
+```
 
 ### Basic Usage
 ```bash
@@ -183,6 +201,45 @@ git commitai
 
 # The AI will analyze your changes and open your editor with a suggested message
 # Save and exit to commit, or quit without saving to abort
+```
+
+### Auto-stage and Commit (`-a` flag)
+```bash
+# Make changes to tracked files
+vim existing-file.py
+
+# Auto-stage all tracked changes and commit
+git commitai -a
+
+# With context
+git commitai -a -m "Refactored error handling"
+
+# Note: -a only stages tracked files, not new untracked files
+# For new files, you still need: git add new-file.py
+```
+
+### Skip Hooks (`-n` flag)
+```bash
+# Skip pre-commit hooks (useful for WIP commits)
+git commitai -n
+
+# Skip hooks with auto-staging
+git commitai -a -n
+
+# Emergency fix - bypass all checks
+git commitai -a -n -m "Emergency production fix"
+```
+
+### Verbose Mode (`-v` flag)
+```bash
+# See the full diff in your editor while writing the message
+git commitai -v
+
+# Review everything: auto-stage and show diff
+git commitai -a -v
+
+# Maximum visibility
+git commitai -a -v -m "Major refactor"
 ```
 
 ### With Additional Context
@@ -203,15 +260,24 @@ git add fixed-file.js
 git commitai --amend
 ```
 
-The `--amend` feature works just like `git commit --amend` but generates a new AI message based on:
-- The changes from the previous commit
-- Any newly staged changes
-- The previous commit message (for context)
-- Any additional context you provide with `-m`
+### Combining Flags
+```bash
+# Auto-stage, skip hooks, show diff
+git commitai -a -n -v
 
-### Workflow Examples
+# Auto-stage with context
+git commitai -a -m "Performance improvements"
 
-#### Standard Workflow
+# Verbose amend
+git commitai --amend -v
+
+# Skip hooks for amend
+git commitai --amend -n
+```
+
+## 📚 Workflow Examples
+
+### Standard Workflow
 ```bash
 # Make some changes
 echo "console.log('Hello World')" >> app.js
@@ -225,77 +291,99 @@ git commitai
 #
 # Added a Hello World console output for debugging purposes.
 # This is a temporary addition for testing the application startup.
-#
-# Please enter the commit message for your changes. Lines starting
-# with '#' will be ignored, and an empty message aborts the commit.
-#
-# On branch main
-#
-# Changes to be committed:
-#   M app.js
-#
-
-# Edit if needed, then save to commit or quit to abort
 ```
 
-#### Amend Workflow
+### Quick Fix Workflow
 ```bash
-# You just made a commit but realized you forgot something
-git commitai  # Creates commit: "Add user authentication"
+# Fix a bug quickly
+vim buggy-file.js
 
-# Oops, forgot to handle edge cases
-vim auth.js  # Make additional changes
-git add auth.js
-
-# Amend with the new changes
-git commitai --amend -m "Added edge case handling for expired tokens"
-
-# Your editor opens with a new comprehensive message like:
-# Add user authentication with comprehensive error handling
-#
-# - Implemented JWT-based authentication system
-# - Added login and logout endpoints
-# - Included token validation middleware
-# - Added edge case handling for expired and malformed tokens
-# - Implemented proper error responses for auth failures
-#
-# You are amending the previous commit.
-#
-# On branch main
-#
-# Changes to be committed (including previous commit):
-#   M auth.js
-#   A middleware/auth.js
-#   M routes/user.js
-#
+# Auto-stage and commit with context, skip hooks
+git commitai -a -n -m "Hotfix for null pointer exception"
 ```
 
-## How It Works
+### Review Before Commit Workflow
+```bash
+# Make multiple changes
+vim file1.py file2.py file3.py
+
+# Auto-stage and review all changes
+git commitai -a -v
+
+# Editor shows the AI message plus the full diff below
+# Review everything, adjust message if needed, then commit
+```
+
+### WIP (Work in Progress) Workflow
+```bash
+# Save work in progress, bypassing checks
+git commitai -a -n -m "WIP: Implementing new feature"
+
+# Later, amend with proper commit
+git commitai --amend -m "Implement user profile feature"
+```
+
+## 🎯 Flag Details
+
+### `-a, --all` - Auto-stage Tracked Files
+- Automatically runs `git add -u` before committing
+- Only stages **tracked** files that have been modified or deleted
+- Does **NOT** stage untracked (new) files
+- Equivalent to `git commit -a`
+- Cannot be used with `--amend`
+
+### `-n, --no-verify` - Skip Git Hooks
+- Bypasses pre-commit and commit-msg hooks
+- Useful for:
+  - WIP (Work in Progress) commits
+  - Emergency hotfixes
+  - Temporarily broken code
+  - Skipping time-consuming checks
+- Use with caution - hooks exist for a reason!
+
+### `-v, --verbose` - Show Diff in Editor
+- Displays the full diff below the commit message
+- Diff appears after a scissors line (`>8`)
+- Everything below the scissors is ignored by git
+- Helps you review changes while writing the message
+- Especially useful for large or complex commits
+
+### `--amend` - Modify Previous Commit
+- Replaces the last commit with a new one
+- Generates new AI message based on all changes
+- Includes both previous commit changes and any new staged changes
+- Cannot be used with `-a` flag
+
+## 🛠️ How It Works
 
 1. **Analyzes staged changes**: Reads `git diff --cached` to understand what changed
-2. **Gathers context**: Includes full file contents for better understanding
-3. **Calls AI API**: Sends the context to your configured AI model
-4. **Opens editor**: Places the generated message in your git editor
-5. **Commits or aborts**: Just like regular `git commit` - save to commit, quit to abort
+2. **Detects file types**: Identifies and handles binary files appropriately
+3. **Gathers context**: Includes full file contents for better understanding
+4. **Calls AI API**: Sends the context to your configured AI model
+5. **Opens editor**: Places the generated message in your git editor
+6. **Applies flags**: Handles auto-staging, hook skipping, and verbose mode
+7. **Commits or aborts**: Just like regular `git commit` - save to commit, quit to abort
 
-For `--amend`:
-1. **Analyzes previous commit**: Includes changes from the last commit
-2. **Includes new staged changes**: Combines with any newly staged files
-3. **Provides previous message**: Uses the old commit message as context
-4. **Generates comprehensive message**: Creates a new message covering all changes
+## 💡 Tips & Best Practices
 
-## Tips
-
+### Commit Message Quality
 - **Better results with context**: Use `-m` flag to explain WHY you made changes
-- **Model selection**: GPT-4 or Claude models generally produce better commit messages than GPT-3.5
+- **Model selection**: GPT-4 or Claude models generally produce better commit messages
 - **Cost optimization**: For simple changes, smaller models like `gpt-3.5-turbo` work well
-- **Amending commits**: Use `--amend` when you need to update the last commit rather than creating a new one
-- **Editor shortcuts**: 
-  - vim: `:wq` to save and commit, `:q!` to abort
-  - nano: `Ctrl+O, Enter, Ctrl+X` to save, `Ctrl+X` to abort
-  - VS Code: `Ctrl+S, Ctrl+W` to save, close without saving to abort
 
-## Troubleshooting
+### Workflow Tips
+- **Review large changes**: Use `-v` flag for complex commits to review while writing
+- **Quick fixes**: Combine `-a -n` for rapid iterations during development
+- **Amending commits**: Use `--amend` to fix the last commit instead of creating new ones
+- **WIP commits**: Use `-n -m "WIP: ..."` for work-in-progress saves
+
+### Editor Shortcuts
+- **vim**: `:wq` to save and commit, `:q!` to abort
+- **nano**: `Ctrl+O, Enter, Ctrl+X` to save, `Ctrl+X` to abort
+- **VS Code**: `Ctrl+S, Ctrl+W` to save, close without saving to abort
+- **emacs**: `Ctrl+X Ctrl+S, Ctrl+X Ctrl+C` to save and exit
+
+## 🔧 Troubleshooting
 
 ### "API key not set" error
 Make sure you've exported your API key:
@@ -304,15 +392,24 @@ export GIT_COMMIT_AI_KEY="your-key-here"
 ```
 
 ### "No staged changes" error
-Stage your changes first:
+Stage your changes first or use the `-a` flag:
 ```bash
 git add .
+# OR
+git commitai -a
 ```
 
 ### "Nothing to amend" error
-This occurs when trying to use `--amend` on an initial commit (no HEAD exists yet). Make a normal commit first:
+This occurs when trying to use `--amend` with no previous commit. Make a normal commit first:
 ```bash
 git commitai  # without --amend
+```
+
+### "Cannot use -a/--all with --amend" error
+The `-a` flag doesn't work with `--amend`. Stage changes manually:
+```bash
+git add .
+git commitai --amend
 ```
 
 ### Empty response from API
@@ -327,7 +424,7 @@ which git-commitai  # Should show the path
 git config --get alias.commitai  # Should show the alias if using that method
 ```
 
-## Advanced Configuration
+## 🔬 Advanced Configuration
 
 ### Using with different branches
 You can set different models for different projects:
@@ -339,17 +436,27 @@ git config core.commitai.model "gpt-3.5-turbo"  # Cheaper model for personal pro
 ```
 
 Then update the script to check git config:
-```bash
+```python
 MODEL="${GIT_COMMIT_AI_MODEL:-$(git config core.commitai.model || echo 'gpt-4o')}"
 ```
 
 ### Custom System Prompts
 You can modify the prompt in the script to match your team's commit message conventions:
-```bash
-MESSAGE="Generate a conventional commit message (feat/fix/docs/style/refactor/test/chore)..."
+```python
+prompt = "Generate a conventional commit message (feat/fix/docs/style/refactor/test/chore)..."
 ```
 
-## Contributing
+### Hook Integration
+Create a prepare-commit-msg hook to always use git-commitai:
+```bash
+#!/bin/sh
+# .git/hooks/prepare-commit-msg
+if [ -z "$2" ]; then
+  git-commitai
+fi
+```
+
+## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](#development) below.
 
@@ -381,13 +488,16 @@ pip install -r requirements.txt
 pytest test_git_commitai.py -v
 
 # Run with coverage report
-pytest test_git_commitai.py -v --cov=. --cov-report=term-missing
+pytest test_git_commitai.py -v --cov=git_commitai --cov-report=term-missing
+
+# Run specific test class
+pytest test_git_commitai.py::TestAutoStageFlag -v
 
 # Run specific test
 pytest test_git_commitai.py::TestGitStatus::test_parse_porcelain_modified_files -v
 
 # Generate HTML coverage report
-pytest test_git_commitai.py --cov=. --cov-report=html
+pytest test_git_commitai.py --cov=git_commitai --cov-report=html
 # Open htmlcov/index.html in your browser
 ```
 
@@ -395,16 +505,16 @@ pytest test_git_commitai.py --cov=. --cov-report=html
 
 ```bash
 # Format code with black
-black git-commitai test_git_commitai.py
+black git_commitai.py test_git_commitai.py
 
 # Check formatting without changing files
-black --check git-commitai test_git_commitai.py
+black --check git_commitai.py test_git_commitai.py
 
 # Run linting
-flake8 git-commitai test_git_commitai.py --max-line-length=100
+flake8 git_commitai.py test_git_commitai.py --max-line-length=100
 
 # Type checking (optional)
-mypy git-commitai
+mypy git_commitai.py
 ```
 
 #### Writing Tests
@@ -418,12 +528,19 @@ When adding new features or fixing bugs, please include tests:
 
 Example test structure:
 ```python
-def test_new_feature():
-    """Test description of what you're testing."""
-    with patch('git_commitai.some_function') as mock_func:
-        mock_func.return_value = 'expected'
-        result = git_commitai.new_feature()
-        assert result == 'expected'
+class TestNewFeature:
+    """Test the new feature functionality."""
+    
+    def test_new_feature_basic(self):
+        """Test basic functionality of new feature."""
+        with patch('git_commitai.some_function') as mock_func:
+            mock_func.return_value = 'expected'
+            result = git_commitai.new_feature()
+            assert result == 'expected'
+    
+    def test_new_feature_edge_case(self):
+        """Test edge cases."""
+        # Test implementation
 ```
 
 #### Submitting Pull Requests
@@ -433,7 +550,7 @@ def test_new_feature():
 3. Make your changes
 4. Add tests for your changes
 5. Ensure all tests pass (`pytest`)
-6. Format your code (`black git-commitai test_git_commitai.py`)
+6. Format your code (`black git_commitai.py test_git_commitai.py`)
 7. Commit your changes (you can use `git-commitai` itself!)
 8. Push to your fork (`git push origin feature/amazing-feature`)
 9. Open a Pull Request
@@ -446,20 +563,16 @@ All pull requests automatically run:
 - Code coverage reporting
 - Linting and formatting checks
 
-## License
+## 📄 License
 
 MIT License - feel free to use and modify as needed.
 
-## Credits
-
-Created by [your-name]. Inspired by the need for better commit messages and the power of AI to understand code changes.
-
 ---
 
-**Note**: This tool sends your code changes to external AI APIs. Ensure you have permission to share your code with third-party services and that you're not violating any confidentiality agreements.
+**⚠️ Privacy Note**: This tool sends your code changes to external AI APIs. Ensure you have permission to share your code with third-party services and that you're not violating any confidentiality agreements.
 
 ## 🔒 License
-* This project is released under the MIT license as found in the [LICENSE](LICENSE) file.
+This project is released under the MIT license as found in the [LICENSE](LICENSE) file.
 
 ## ✨ Star History
 [![Star History](https://api.star-history.com/svg?repos=semperai/git-commitai&type=Date)](https://star-history.com/#semperai/git-commitai&Date)
