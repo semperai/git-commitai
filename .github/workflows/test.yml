@@ -28,7 +28,7 @@ jobs:
     
     - name: Run tests with coverage
       run: |
-        pytest test_git_commitai.py --cov --cov-report=xml
+        pytest tests/ --cov=git_commitai --cov-report=xml
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
