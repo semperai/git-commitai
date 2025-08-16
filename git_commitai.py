@@ -709,7 +709,6 @@ For more information, visit: https://github.com/semperai/git-commitai
         action="store_true",
         help="Allow creating an empty commit",
     )
-    parser.add_argument("--version", action="version", version="git-commitai 1.0.5")
     args = parser.parse_args()
 
     # Check if in a git repository first

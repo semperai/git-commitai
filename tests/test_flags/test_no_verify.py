@@ -1,6 +1,5 @@
 """Tests for -n/--no-verify hook skipping functionality."""
 
-import pytest
 from unittest.mock import patch
 
 import git_commitai
@@ -216,8 +215,8 @@ class TestNoVerifyFlag:
 
                                                 # Check create_commit_message_file call
                                                 create_args = mock_create.call_args[1]
-                                                assert create_args["auto_staged"] == True
-                                                assert create_args["no_verify"] == True
+                                                assert create_args["auto_staged"]
+                                                assert create_args["no_verify"]
 
                                                 # Check git commit command
                                                 commit_calls = [

@@ -129,31 +129,62 @@ git commitai -m "Refactored auth system for JWT"
 git commitai -a
 
 # See all options
-git commitai --help  # Opens the man page
+git commitai --help
 ```
 
 ## 📚 Documentation
 
 ### Get Help
 ```bash
-# View the full manual
 man git-commitai
-
-# Quick help
-git commitai --help
 ```
 
-### Common Commands
+### Git Commit Commands Support
 
-| Command | Description |
-|---------|-------------|
-| `git commitai` | Generate commit message for staged changes |
-| `git commitai -a` | Auto-stage tracked files and commit |
-| `git commitai -m "context"` | Add context for better AI messages |
-| `git commitai -v` | Show diff in editor while writing message |
-| `git commitai --amend` | Amend the previous commit |
-| `git commitai -n` | Skip git hooks |
-| `git commitai --allow-empty` | Create empty commit (for CI triggers) |
+The following table shows all `git commit` flags and their current support status in `git commitai`:
+
+| Flag | Description | Status |
+|------|-------------|--------|
+| `-a, --all` | Auto-stage all tracked modified files | ✅ **Supported** |
+| `--interactive` | Interactively add files | ❌ Not supported |
+| `--patch` | Interactively add hunks of patch | ❌ Not supported |
+| `-s, --signoff` | Add Signed-off-by trailer | ❌ Not supported |
+| `-v, --verbose` | Show diff in commit message editor | ✅ **Supported** |
+| `-u<mode>, --untracked-files[=<mode>]` | Show untracked files | ❌ Not supported |
+| `--amend` | Amend the previous commit | ✅ **Supported** |
+| `--dry-run` | Don't actually commit, just show what would be committed | ❌ Not supported |
+| `-c, --reedit-message=<commit>` | Reuse and edit message from specified commit | ❌ Not supported |
+| `-C, --reuse-message=<commit>` | Reuse message from specified commit | ❌ Not supported |
+| `--squash=<commit>` | Construct commit for squashing | ❌ Not supported |
+| `--fixup=<commit>` | Construct commit for autosquash rebase | ❌ Not supported |
+| `-F, --file=<file>` | Read commit message from file | ❌ Not supported |
+| `-m, --message=<msg>` | Provide context message for AI | ✅ **Supported** (modified behavior) |
+| `--reset-author` | Reset author information | ❌ Not supported |
+| `--allow-empty` | Allow empty commits | ✅ **Supported** |
+| `--allow-empty-message` | Allow commits with empty message | ❌ Not supported |
+| `--no-verify, -n` | Skip pre-commit and commit-msg hooks | ✅ **Supported** |
+| `-e, --edit` | Force edit of commit message | ❌ Not supported |
+| `--author=<author>` | Override author information | ❌ Not supported |
+| `--date=<date>` | Override author date | ❌ Not supported |
+| `--cleanup=<mode>` | Set commit message cleanup mode | ❌ Not supported |
+| `--status` | Include git status in commit editor | ❌ Not supported |
+| `--no-status` | Don't include git status in commit editor | ❌ Not supported |
+| `-i, --include` | Stage specified files in addition to staged | ❌ Not supported |
+| `-o, --only` | Commit only specified files | ❌ Not supported |
+| `--pathspec-from-file=<file>` | Read pathspec from file | ❌ Not supported |
+| `--pathspec-file-nul` | NUL-separated pathspec file | ❌ Not supported |
+| `--trailer <token>[(=\|:)<value>]` | Add trailers to commit message | ❌ Not supported |
+| `-S[<keyid>], --gpg-sign[=<keyid>]` | GPG-sign commit | ❌ Not supported |
+| `--no-gpg-sign` | Don't GPG-sign commit | ❌ Not supported |
+| `--` | Separate paths from options | ❌ Not supported |
+| `<pathspec>...` | Commit only specified paths | ❌ Not supported |
+
+#### Legend
+- ✅ **Supported** - Fully functional in git-commitai
+- ❌ Not supported - Not yet implemented
+
+#### Note on `-m` flag
+In standard `git commit`, the `-m` flag provides the entire commit message. In `git commitai`, this flag provides context to the AI to help generate a better commit message based on your changes.
 
 ### Supported Providers
 

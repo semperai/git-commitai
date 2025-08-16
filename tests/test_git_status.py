@@ -1,8 +1,7 @@
 """Tests for git status parsing and display functions."""
 
-import pytest
 import subprocess
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from io import StringIO
 
 import git_commitai
@@ -114,7 +113,7 @@ class TestCheckStagedChanges:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value.returncode = 1  # git diff returns 1 when there are changes
 
-            assert git_commitai.check_staged_changes() == True
+            assert git_commitai.check_staged_changes()
 
     def test_no_staged_changes(self):
         """Test when there are no staged changes."""
@@ -122,14 +121,14 @@ class TestCheckStagedChanges:
             mock_run.return_value.returncode = 0  # git diff returns 0 when no changes
 
             with patch("git_commitai.show_git_status"):
-                assert git_commitai.check_staged_changes() == False
+                assert not git_commitai.check_staged_changes()
 
     def test_amend_with_previous_commit(self):
         """Test --amend with a previous commit."""
         with patch("git_commitai.run_command") as mock_run:
             mock_run.return_value = "abc123"  # Successful HEAD lookup
 
-            assert git_commitai.check_staged_changes(amend=True) == True
+            assert git_commitai.check_staged_changes(amend=True)
 
     def test_amend_without_previous_commit(self):
         """Test --amend on initial commit."""
@@ -140,5 +139,5 @@ class TestCheckStagedChanges:
                 result = git_commitai.check_staged_changes(amend=True)
                 output = fake_out.getvalue()
 
-                assert result == False
+                assert not result
                 assert "nothing to amend" in output

@@ -1,6 +1,5 @@
 """Tests for -v/--verbose diff display functionality."""
 
-import pytest
 import tempfile
 from unittest.mock import patch
 
@@ -192,7 +191,7 @@ index 222..333 100644
                                                 # Verify create_commit_message_file was called with verbose=True
                                                 mock_create.assert_called_once()
                                                 call_args = mock_create.call_args[1]
-                                                assert call_args["verbose"] == True
+                                                assert call_args["verbose"]
 
     def test_verbose_with_multiple_flags(self):
         """Test verbose combined with other flags."""
@@ -219,9 +218,9 @@ index 222..333 100644
 
                                                 # Verify all flags are passed correctly
                                                 call_args = mock_create.call_args[1]
-                                                assert call_args["auto_staged"] == True
-                                                assert call_args["no_verify"] == True
-                                                assert call_args["verbose"] == True
+                                                assert call_args["auto_staged"]
+                                                assert call_args["no_verify"]
+                                                assert call_args["verbose"]
 
     def test_verbose_diff_formatting(self):
         """Test that diff lines are properly formatted as comments."""

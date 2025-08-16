@@ -2,9 +2,7 @@
 
 import pytest
 import tempfile
-import subprocess
 from unittest.mock import patch, MagicMock
-from io import StringIO
 
 import git_commitai
 
@@ -21,11 +19,11 @@ class TestAllowEmptyFlag:
             # Without allow_empty, should return False
             with patch("git_commitai.show_git_status"):
                 result = git_commitai.check_staged_changes(allow_empty=False)
-                assert result == False
+                assert not result
 
             # With allow_empty, should return True
             result = git_commitai.check_staged_changes(allow_empty=True)
-            assert result == True
+            assert result
 
     def test_get_staged_files_with_allow_empty(self):
         """Test get_staged_files returns appropriate message for empty commits."""
@@ -165,7 +163,7 @@ class TestAllowEmptyFlag:
                                                 # Verify create_commit_message_file was called with allow_empty=True
                                                 mock_create.assert_called_once()
                                                 call_args = mock_create.call_args[1]
-                                                assert call_args["allow_empty"] == True
+                                                assert call_args["allow_empty"]
 
                                                 # Verify git commit was called with --allow-empty
                                                 commit_calls = [
@@ -323,8 +321,8 @@ class TestAllowEmptyFlag:
 
                                                 # Verify both flags are passed
                                                 call_args = mock_create.call_args[1]
-                                                assert call_args["allow_empty"] == True
-                                                assert call_args["verbose"] == True
+                                                assert call_args["allow_empty"]
+                                                assert call_args["verbose"]
 
     def test_allow_empty_all_flags_combined(self):
         """Test combining --allow-empty with multiple other flags."""
@@ -367,10 +365,10 @@ class TestAllowEmptyFlag:
 
                                                 # Check create_commit_message_file call
                                                 create_args = mock_create.call_args[1]
-                                                assert create_args["auto_staged"] == True
-                                                assert create_args["no_verify"] == True
-                                                assert create_args["verbose"] == True
-                                                assert create_args["allow_empty"] == True
+                                                assert create_args["auto_staged"]
+                                                assert create_args["no_verify"]
+                                                assert create_args["verbose"]
+                                                assert create_args["allow_empty"]
 
                                                 # Check git commit command
                                                 commit_calls = [

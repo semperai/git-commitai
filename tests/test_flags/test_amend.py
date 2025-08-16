@@ -1,6 +1,5 @@
 """Tests for --amend flag functionality."""
 
-import pytest
 import tempfile
 from unittest.mock import patch
 import git_commitai

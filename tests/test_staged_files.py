@@ -1,6 +1,5 @@
 """Tests for staged files handling."""
 
-import pytest
 from unittest.mock import patch
 import git_commitai
 
