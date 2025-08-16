@@ -270,7 +270,7 @@ CRITICAL RULES YOU MUST FOLLOW:
    If you detect any obvious problems, add warnings as Git-style comments after the commit message.
    These warnings help the developer catch bugs before committing.
 
-   Look for these types of issues:
+   Look for these types of severe or critical issues:
    - Hardcoded secrets
    - Syntax errors or typos in variable names
    - null/undefined reference errors
