@@ -23,36 +23,35 @@ An intelligent git commit message generator that uses AI to analyze your staged 
 
 1. Download the script:
 ```bash
-curl -O https://raw.githubusercontent.com/semperai/git-commitai/main/git-commitai
-chmod +x git-commitai
+curl -O https://raw.githubusercontent.com/semperai/git-commitai/main/git_commitai.py
+chmod +x git_commitai.py
 ```
 
 2. Install as a git command (choose one method):
 
 #### Method 1: Git Alias (Simplest)
 ```bash
-git config --global alias.commitai '!'"$(pwd)/git-commitai"
+git config --global alias.commitai '!python3 '"$(pwd)/git_commitai.py"
 ```
 Now you can use: `git commitai`
 
-#### Method 2: Add to PATH
+#### Method 2: Add to PATH with wrapper script
 ```bash
-# Move to a directory in your PATH
+# Create a wrapper script
+echo '#!/bin/bash\npython3 /path/to/git_commitai.py "$@"' > git-commitai
+chmod +x git-commitai
 sudo mv git-commitai /usr/local/bin/
-# Or add to your personal bin
-mkdir -p ~/bin
-mv git-commitai ~/bin/
-echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc  # or ~/.zshrc
-source ~/.bashrc
-```
-Now you can use: `git commitai` or just `git-commitai`
-
-#### Method 3: Custom Git Command
-```bash
-# Git automatically recognizes git-* commands in PATH
-sudo mv git-commitai /usr/local/bin/git-commitai
 ```
 Now you can use: `git commitai`
+
+#### Method 3: Direct execution
+```bash
+# Just run directly
+python3 git_commitai.py
+# Or make it executable
+chmod +x git_commitai.py
+./git_commitai.py
+```
 
 ## Configuration
 

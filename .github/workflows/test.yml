@@ -29,10 +29,10 @@ jobs:
     - name: Run linting
       run: |
         # Check code formatting with black
-        black --check git-commitai test_git_commitai.py
+        black --check git_commitai.py test_git_commitai.py
         
         # Run flake8 linting
-        flake8 git-commitai test_git_commitai.py --max-line-length=100 --extend-ignore=E203,W503
+        flake8 git_commitai.py test_git_commitai.py --max-line-length=100 --extend-ignore=E203,W503
     
     - name: Run tests with coverage
       run: |
@@ -68,7 +68,7 @@ jobs:
     
     - name: Test script execution
       run: |
-        python git-commitai --help || true
+        python git_commitai.py --help || true
         
     - name: Test in git repository
       run: |
@@ -81,4 +81,4 @@ jobs:
         export GIT_COMMIT_AI_URL="https://api.example.com"
         
         # Test that script recognizes staged changes
-        python git-commitai --help || true
+        python git_commitai.py --help || true

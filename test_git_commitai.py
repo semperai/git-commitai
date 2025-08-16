@@ -8,13 +8,9 @@ import json
 import subprocess
 from unittest.mock import patch, MagicMock, mock_open, call
 from io import StringIO
-import importlib.util
 
-# Import the module we're testing (git-commitai without .py extension)
-spec = importlib.util.spec_from_file_location("git_commitai", "./git-commitai")
-git_commitai = importlib.util.module_from_spec(spec)
-sys.modules["git_commitai"] = git_commitai
-spec.loader.exec_module(git_commitai)
+# Simple import now that it has .py extension
+import git_commitai
 
 class TestGitStatus:
     """Test the git status parsing and display functions."""
@@ -108,7 +104,8 @@ class TestGitStatus:
             mock_run.side_effect = side_effect
 
             with patch('sys.stdout', new=StringIO()) as fake_out:
-                with patch('subprocess.CalledProcessError', Exception):
+                # Mock CalledProcessError since it's used in the function
+                with patch.object(subprocess, 'CalledProcessError', Exception):
                     git_commitai.show_git_status()
                     output = fake_out.getvalue()
 
