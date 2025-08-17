@@ -11,7 +11,7 @@ import re
 from datetime import datetime
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
-from typing import Dict, List, Optional, Tuple, Any, Union, NoReturn
+from typing import Dict, List, Optional, Tuple, Any, Union
 
 
 # Global debug flag
@@ -103,7 +103,7 @@ def show_man_page() -> bool:
     """
     try:
         # Try to use man command to show the man page
-        result: subprocess.CompletedProcess = subprocess.run(
+        result: subprocess.CompletedProcess[bytes] = subprocess.run(
             ["man", "git-commitai"],
             check=False
         )
@@ -480,7 +480,7 @@ def check_staged_changes(amend: bool = False, auto_stage: bool = False, allow_em
         # First, check if there are any changes to stage
         try:
             # Check for modified tracked files
-            result: subprocess.CompletedProcess = subprocess.run(["git", "diff", "--quiet"], capture_output=True)
+            result: subprocess.CompletedProcess[bytes] = subprocess.run(["git", "diff", "--quiet"], capture_output=True)
             if result.returncode != 0:
                 debug_log("Found unstaged changes, auto-staging them")
                 # There are unstaged changes in tracked files, stage them
@@ -1382,7 +1382,7 @@ def is_commit_message_empty(filepath: str) -> bool:
         return True
 
 
-def main() -> NoReturn:
+def main() -> None:
     """Main entry point for git-commitai."""
     global DEBUG
 

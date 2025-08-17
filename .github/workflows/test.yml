@@ -26,6 +26,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Type Check with mypy
+      run: |
+        mypy git_commitai.py
+
     - name: Run tests with coverage
       run: |
         pytest tests/ --cov=git_commitai --cov-report=xml
