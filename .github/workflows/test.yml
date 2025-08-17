@@ -36,9 +36,7 @@ jobs:
 
     - name: Upload coverage to Codecov
       if: matrix.python-version == '3.10'  # Only upload from one version
-      uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+      uses: coverallsapp/github-action@v2
 
   integration-test:
     runs-on: ${{ matrix.os }}
