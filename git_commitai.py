@@ -16,6 +16,9 @@ from urllib.error import URLError, HTTPError
 from typing import Dict, List, Optional, Tuple, Any, Union
 
 
+# Version information
+__version__ = "0.1.0"
+
 # Global debug flag
 DEBUG: bool = False
 
@@ -95,6 +98,12 @@ def debug_log(message: str) -> None:
         # Redact sensitive information before logging
         safe_message: str = redact_secrets(message)
         print(f"DEBUG: {safe_message}", file=sys.stderr)
+
+
+def show_version() -> None:
+    """Show version information and exit."""
+    print(f"git-commitai version {__version__}")
+    sys.exit(0)
 
 
 def show_man_page() -> bool:
@@ -1404,6 +1413,10 @@ def main() -> None:
     """Main entry point for git-commitai."""
     global DEBUG
 
+    # Check for --version flag early
+    if "--version" in sys.argv or "-V" in sys.argv:
+        show_version()
+
     # Check for --help flag early and show man page if available
     if "--help" in sys.argv or "-h" in sys.argv:
         if show_man_page():
@@ -1424,6 +1437,7 @@ Examples:
   git-commitai --author "Name <email@example.com>"  # Override author
   git-commitai --date "2024-01-01T12:00:00"  # Override date
   git-commitai --debug            # Enable debug logging
+  git-commitai --version          # Show version information
 
 Configuration:
   Create a .gitcommitai file in your repository root to customize the AI prompt.
@@ -1515,6 +1529,12 @@ For more information, visit: https://github.com/semperai/git-commitai
         action="store_true",
         help="Enable debug logging to stderr",
     )
+    parser.add_argument(
+        "--version",
+        "-V",
+        action="store_true",
+        help="Show version information and exit",
+    )
 
     # Debug section arguments
     debug_group = parser.add_argument_group('debug options', 'Override API configuration (requires --debug)')
@@ -1524,11 +1544,15 @@ For more information, visit: https://github.com/semperai/git-commitai
 
     args: argparse.Namespace = parser.parse_args()
 
+    # Handle version flag (though this should have been caught earlier)
+    if args.version:
+        show_version()
+
     # Enable debug mode if flag is set
     if args.debug:
         DEBUG = True
         debug_log("=" * 60)
-        debug_log("Git Commit AI started with --debug flag")
+        debug_log(f"Git Commit AI v{__version__} started with --debug flag")
         debug_log(f"Python version: {sys.version}")
         debug_log(f"Arguments: {sys.argv[1:]}")
         if args.dry_run:
