@@ -8,7 +8,7 @@ class TestCheckStagedChangesAutoStage:
 
     def test_check_staged_changes_auto_stage_subprocess_error(self):
         """Test auto-stage when subprocess.run fails."""
-        with patch("subprocess.run") as mock_run:
+        with patch("git_commitai.subprocess.run") as mock_run:
             # First call checks for unstaged changes
             diff_result = MagicMock()
             diff_result.returncode = 1  # Has unstaged changes
@@ -22,4 +22,5 @@ class TestCheckStagedChangesAutoStage:
             with patch("sys.stdout", new=StringIO()):
                 result = git_commitai.check_staged_changes(auto_stage=True)
                 assert result is False
+                assert mock_run.call_count == 2
 
