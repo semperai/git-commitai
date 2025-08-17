@@ -30,8 +30,8 @@
     <a href="https://github.com/semperai/git-commitai/actions">
       <img src="https://img.shields.io/github/actions/workflow/status/semperai/git-commitai/test.yml?style=flat&label=Tests" alt="Tests" />
     </a>
-    <a href='https://coveralls.io/github/semperai/git-commitai?branch=coveralls-test-2'>
-      <img src='https://coveralls.io/repos/github/semperai/git-commitai/badge.svg?branch=coveralls-test-2' alt='Coverage Status' />
+    <a href='https://coveralls.io/github/semperai/git-commitai'>
+      <img src='https://coveralls.io/repos/github/semperai/git-commitai/badge.svg' alt='Coverage Status' />
     </a>
     <a href="https://github.com/semperai/git-commitai/releases">
       <img src="https://img.shields.io/github/v/release/semperai/git-commitai?style=flat" alt="Release" />
