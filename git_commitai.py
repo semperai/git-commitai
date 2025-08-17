@@ -139,11 +139,6 @@ def load_gitcommitai_config() -> Dict[str, Any]:
     - {FILES} - The modified files with their content
     - {GITMESSAGE} - Content from .gitmessage template if exists
     - {AMEND_NOTE} - Note about amending if --amend is used
-    - {AUTO_STAGE_NOTE} - Note about auto-staging if -a is used
-    - {NO_VERIFY_NOTE} - Note about skipping hooks if -n is used
-    - {ALLOW_EMPTY_NOTE} - Note about empty commit if --allow-empty is used
-    - {AUTHOR_NOTE} - Note about custom author if --author is used
-    - {DATE_NOTE} - Note about custom date if --date is used
 
     Also supports optional model configuration.
 
