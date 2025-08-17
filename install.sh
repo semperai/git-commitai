@@ -12,28 +12,16 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Default installation directory
+# System installation directories
 INSTALL_DIR="/usr/local/bin"
 MAN_DIR="/usr/local/share/man/man1"
 REPO_URL="https://raw.githubusercontent.com/semperai/git-commitai/master"
-
 
 # Function to print colored output
 print_color() {
     local color="$1"
     shift
-    # Join remaining args; preserve spaces; add newline
     printf "%b\n" "${color}$*${NC}"
-}
-
-# Function to check if running with sudo/root
-check_permissions() {
-    if [[ $EUID -ne 0 ]] && [[ "$1" == "system" ]]; then
-        print_color $RED "Error: System-wide installation requires sudo privileges"
-        print_color $YELLOW "Run: sudo ./install.sh"
-        print_color $YELLOW "Or use: ./install.sh --user for user installation"
-        exit 1
-    fi
 }
 
 # Function to detect OS and adjust paths
@@ -42,13 +30,8 @@ detect_os() {
         OS="linux"
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         OS="macos"
-        # macOS might need different man path
-        if [[ -d "/usr/local/share/man" ]]; then
-            MAN_DIR="/usr/local/share/man/man1"
-        elif [[ -d "/opt/local/share/man" ]]; then
-            # MacPorts
-            MAN_DIR="/opt/local/share/man/man1"
-        fi
+        # macOS paths - prefer standard location
+        MAN_DIR="/usr/local/share/man/man1"
     elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "win32" ]]; then
         OS="windows"
         print_color $YELLOW "⚠️  Windows detected. Consider using WSL (Windows Subsystem for Linux) for best compatibility."
@@ -108,104 +91,136 @@ download_file() {
     fi
 }
 
-# Function to install for current user
-install_user() {
-    print_color $BLUE "Installing git-commitai for current user..."
-
-    # Create user directories if they don't exist
-    USER_BIN="$HOME/.local/bin"
-    USER_MAN="$HOME/.local/share/man/man1"
-
-    mkdir -p "$USER_BIN"
-    mkdir -p "$USER_MAN"
-
-    # Download and install script
-    print_color $YELLOW "Downloading git-commitai..."
-    download_file "$REPO_URL/git_commitai.py" "$USER_BIN/git-commitai"
-    chmod +x "$USER_BIN/git-commitai"
-
-    # Download and install man page
-    print_color $YELLOW "Installing man page..."
-    download_file "$REPO_URL/git-commitai.1" "$USER_MAN/git-commitai.1"
-
-    # Set up git alias
-    print_color $YELLOW "Setting up git alias..."
-    git config --global alias.commitai "!$USER_BIN/git-commitai"
-
-    # Add to PATH if needed
-    if [[ ":$PATH:" != *":$USER_BIN:"* ]]; then
-        print_color $YELLOW "Adding $USER_BIN to PATH..."
-
-        # Detect shell and update appropriate config file
-        if [[ -n "$ZSH_VERSION" ]] || [[ -f "$HOME/.zshrc" ]]; then
-            echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$HOME/.zshrc"
-            SHELL_RC="$HOME/.zshrc"
-        elif [[ -n "$BASH_VERSION" ]] || [[ -f "$HOME/.bashrc" ]]; then
-            echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$HOME/.bashrc"
-            SHELL_RC="$HOME/.bashrc"
-        else
-            echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$HOME/.profile"
-            SHELL_RC="$HOME/.profile"
-        fi
-
-        print_color $YELLOW "Added PATH to $SHELL_RC"
-    fi
-
-    # Add MANPATH if needed
-    if [[ -z "$MANPATH" ]] || [[ ":$MANPATH:" != *":$USER_MAN:"* ]]; then
-        if [[ -n "$ZSH_VERSION" ]] || [[ -f "$HOME/.zshrc" ]]; then
-            echo "export MANPATH=\"\$HOME/.local/share/man:\$MANPATH\"" >> "$HOME/.zshrc"
-        elif [[ -n "$BASH_VERSION" ]] || [[ -f "$HOME/.bashrc" ]]; then
-            echo "export MANPATH=\"\$HOME/.local/share/man:\$MANPATH\"" >> "$HOME/.bashrc"
-        else
-            echo "export MANPATH=\"\$HOME/.local/share/man:\$MANPATH\"" >> "$HOME/.profile"
-        fi
-    fi
-
-    print_color $GREEN "✓ User installation complete!"
-    if [[ -n "${SHELL_RC:-}" ]]; then
-        print_color $YELLOW "\nPlease run: source $SHELL_RC"
-        print_color $YELLOW "Or restart your terminal for PATH changes to take effect."
+# Function to check if directory is writable
+is_writable() {
+    local dir=$1
+    # Check if directory exists and is writable
+    if [[ -d "$dir" ]] && [[ -w "$dir" ]]; then
+        return 0
     else
-        print_color $YELLOW "\nIf you just added PATH/MANPATH in a prior step, run: source ~/.bashrc or ~/.zshrc"
-        print_color $YELLOW "Otherwise, restart your terminal."
+        return 1
+    fi
+}
+
+# Function to create directory with or without sudo
+create_directory() {
+    local dir=$1
+
+    if [[ -d "$dir" ]]; then
+        return 0
     fi
 
+    # Try to create parent directory first to check if we need sudo
+    local parent_dir=$(dirname "$dir")
+
+    if is_writable "$parent_dir"; then
+        print_color $YELLOW "Creating $dir..."
+        mkdir -p "$dir"
+    else
+        print_color $YELLOW "Creating $dir (requires sudo)..."
+        sudo mkdir -p "$dir"
+    fi
+}
+
+# Function to copy file with or without sudo
+copy_file() {
+    local source=$1
+    local dest_dir=$2
+    local dest_file=$3
+
+    if is_writable "$dest_dir"; then
+        cp "$source" "$dest_dir/$dest_file"
+        if [[ -x "$source" ]]; then
+            chmod +x "$dest_dir/$dest_file"
+        fi
+    else
+        print_color $YELLOW "Installing to $dest_dir (requires sudo)..."
+        sudo cp "$source" "$dest_dir/$dest_file"
+        if [[ -x "$source" ]]; then
+            sudo chmod +x "$dest_dir/$dest_file"
+        fi
+    fi
+}
+
+# Function to remove file with or without sudo
+remove_file() {
+    local file=$1
+
+    if [[ ! -f "$file" ]]; then
+        return 0
+    fi
+
+    local dir=$(dirname "$file")
+
+    if is_writable "$dir"; then
+        rm -f "$file"
+    else
+        print_color $YELLOW "Removing $file (requires sudo)..."
+        sudo rm -f "$file"
+    fi
 }
 
 # Function to install system-wide
 install_system() {
-    check_permissions "system"
+    print_color $BLUE "Installing git-commitai..."
 
-    print_color $BLUE "Installing git-commitai system-wide..."
+    # Create temp directory for downloads
+    local temp_dir=$(mktemp -d)
+    trap "rm -rf $temp_dir" EXIT
+
+    # Download script to temp directory first
+    print_color $YELLOW "Downloading git-commitai..."
+    download_file "$REPO_URL/git_commitai.py" "$temp_dir/git-commitai"
+    chmod +x "$temp_dir/git-commitai"
+
+    # Download man page to temp directory
+    print_color $YELLOW "Downloading man page..."
+    download_file "$REPO_URL/git-commitai.1" "$temp_dir/git-commitai.1"
 
     # Create directories if they don't exist
-    mkdir -p "$INSTALL_DIR"
-    mkdir -p "$MAN_DIR"
+    create_directory "$INSTALL_DIR"
+    create_directory "$MAN_DIR"
 
-    # Download and install script
-    print_color $YELLOW "Downloading git-commitai..."
-    download_file "$REPO_URL/git_commitai.py" "$INSTALL_DIR/git-commitai"
-    chmod +x "$INSTALL_DIR/git-commitai"
+    # Copy files to system directories
+    print_color $YELLOW "Installing git-commitai to $INSTALL_DIR..."
+    copy_file "$temp_dir/git-commitai" "$INSTALL_DIR" "git-commitai"
 
-    # Download and install man page
-    print_color $YELLOW "Installing man page..."
-    download_file "$REPO_URL/git-commitai.1" "$MAN_DIR/git-commitai.1"
+    print_color $YELLOW "Installing man page to $MAN_DIR..."
+    copy_file "$temp_dir/git-commitai.1" "$MAN_DIR" "git-commitai.1"
 
     # Update man database (OS-specific)
     if [[ "$OS" == "linux" ]]; then
         if command -v mandb &> /dev/null; then
             print_color $YELLOW "Updating man database..."
-            mandb -q 2>/dev/null || true
+            if is_writable "/var/cache/man" || is_writable "/usr/share/man"; then
+                mandb -q 2>/dev/null || true
+            else
+                sudo mandb -q 2>/dev/null || true
+            fi
         fi
     elif [[ "$OS" == "macos" ]]; then
+        # macOS typically doesn't need manual man database updates for /usr/local/share/man
+        # But if makewhatis exists, we can run it
         if command -v makewhatis &> /dev/null; then
             print_color $YELLOW "Updating man database..."
-            makewhatis "$MAN_DIR" 2>/dev/null || true
+            if is_writable "$MAN_DIR"; then
+                makewhatis "$MAN_DIR" 2>/dev/null || true
+            else
+                sudo makewhatis "$MAN_DIR" 2>/dev/null || true
+            fi
         fi
     fi
 
-    print_color $GREEN "✓ System installation complete!"
+    print_color $GREEN "✓ Installation complete!"
+}
+
+# Function to configure git alias for the current user
+configure_git_alias() {
+    print_color $BLUE "\nConfiguring git alias..."
+
+    # Set up git alias for current user
+    git config --global alias.commitai "!$INSTALL_DIR/git-commitai"
+    print_color $GREEN "✓ Git alias configured for user: $USER"
 }
 
 # Function to configure environment
@@ -281,12 +296,13 @@ setup_api_credentials() {
     fi
 
     # Detect shell config file
-    if [[ -n "$ZSH_VERSION" ]] || [[ -f "$HOME/.zshrc" ]]; then
-        SHELL_RC="$HOME/.zshrc"
-    elif [[ -n "$BASH_VERSION" ]] || [[ -f "$HOME/.bashrc" ]]; then
-        SHELL_RC="$HOME/.bashrc"
+    local shell_rc
+    if [[ -f "$HOME/.zshrc" ]]; then
+        shell_rc="$HOME/.zshrc"
+    elif [[ -f "$HOME/.bashrc" ]]; then
+        shell_rc="$HOME/.bashrc"
     else
-        SHELL_RC="$HOME/.profile"
+        shell_rc="$HOME/.profile"
     fi
 
     # Write configuration
@@ -296,10 +312,10 @@ setup_api_credentials() {
         echo "export GIT_COMMIT_AI_KEY='$API_KEY'"
         echo "export GIT_COMMIT_AI_URL='$API_URL'"
         echo "export GIT_COMMIT_AI_MODEL='$DEFAULT_MODEL'"
-    } >> "$SHELL_RC"
+    } >> "$shell_rc"
 
-    print_color $GREEN "✓ Configuration saved to $SHELL_RC"
-    print_color $YELLOW "Run: source $SHELL_RC"
+    print_color $GREEN "✓ Configuration saved to $shell_rc"
+    print_color $YELLOW "Run: source $shell_rc"
 }
 
 # Function to test installation
@@ -308,9 +324,9 @@ test_installation() {
 
     # Test if git-commitai is accessible
     if command -v git-commitai &> /dev/null; then
-        print_color $GREEN "✓ git-commitai command found"
+        print_color $GREEN "✓ git-commitai command found in PATH"
     else
-        print_color $YELLOW "⚠ git-commitai not in PATH yet (restart terminal)"
+        print_color $RED "✗ git-commitai not found in PATH"
     fi
 
     # Test git alias
@@ -324,14 +340,29 @@ test_installation() {
     if man git-commitai &> /dev/null 2>&1; then
         print_color $GREEN "✓ Man page accessible"
     else
-        print_color $YELLOW "⚠ Man page not accessible yet"
+        print_color $YELLOW "⚠ Man page not accessible (may need to restart terminal)"
     fi
 
     # Test API configuration
     if [[ -n "$GIT_COMMIT_AI_KEY" ]]; then
-        print_color $GREEN "✓ API key configured"
+        print_color $GREEN "✓ API key configured in current session"
     else
-        print_color $YELLOW "⚠ API key not configured"
+        print_color $YELLOW "⚠ API key not configured in current session (check your shell config)"
+    fi
+
+    # Show permission status
+    echo ""
+    print_color $BLUE "Installation permissions:"
+    if is_writable "$INSTALL_DIR"; then
+        print_color $GREEN "  • $INSTALL_DIR is writable by user (no sudo needed)"
+    else
+        print_color $YELLOW "  • $INSTALL_DIR requires sudo for modifications"
+    fi
+
+    if is_writable "$MAN_DIR"; then
+        print_color $GREEN "  • $MAN_DIR is writable by user (no sudo needed)"
+    else
+        print_color $YELLOW "  • $MAN_DIR requires sudo for modifications"
     fi
 }
 
@@ -339,28 +370,38 @@ test_installation() {
 uninstall() {
     print_color $BLUE "Uninstalling git-commitai..."
 
-    # Remove system files
-    if [[ -f "$INSTALL_DIR/git-commitai" ]]; then
-        if [[ $EUID -eq 0 ]]; then
-            rm -f "$INSTALL_DIR/git-commitai"
-            rm -f "$MAN_DIR/git-commitai.1"
-            print_color $GREEN "✓ System files removed"
+    # Confirm uninstall
+    print_color $YELLOW "This will remove:"
+    echo "  • $INSTALL_DIR/git-commitai (if it exists)"
+    echo "  • $MAN_DIR/git-commitai.1 (if it exists)"
+    echo "  • git alias 'commitai'"
+    echo ""
+    read -p "Continue with uninstall? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_color $YELLOW "Uninstall cancelled"
+        exit 0
+    fi
+
+    # Remove system files with verification
+    remove_file "$INSTALL_DIR/git-commitai" "git-commitai executable"
+    remove_file "$MAN_DIR/git-commitai.1" "man page"
+
+    # Remove git alias (doesn't require sudo)
+    git config --global --unset alias.commitai 2>/dev/null && \
+        print_color $GREEN "✓ Git alias removed" || \
+        print_color $YELLOW "No git alias 'commitai' found"
+
+    # Update man database
+    if [[ "$OS" == "linux" ]] && command -v mandb &> /dev/null; then
+        if is_writable "/var/cache/man" || is_writable "/usr/share/man"; then
+            mandb -q 2>/dev/null || true
         else
-            print_color $YELLOW "System files require sudo to remove"
+            sudo mandb -q 2>/dev/null || true
         fi
     fi
 
-    # Remove user files
-    if [[ -f "$HOME/.local/bin/git-commitai" ]]; then
-        rm -f "$HOME/.local/bin/git-commitai"
-        rm -f "$HOME/.local/share/man/man1/git-commitai.1"
-        print_color $GREEN "✓ User files removed"
-    fi
-
-    # Remove git alias
-    git config --global --unset alias.commitai 2>/dev/null || true
-    print_color $GREEN "✓ Git alias removed"
-
+    print_color $GREEN "✓ Uninstallation complete!"
     print_color $YELLOW "Note: Environment variables in shell config files were not removed"
 }
 
@@ -373,13 +414,8 @@ main() {
 
     # Parse arguments
     case "${1:-}" in
-        --user)
-            INSTALL_TYPE="user"
-            ;;
-        --system)
-            INSTALL_TYPE="system"
-            ;;
         --uninstall)
+            detect_os  # Need to detect OS first to set paths
             uninstall
             exit 0
             ;;
@@ -387,14 +423,12 @@ main() {
             echo "Usage: ./install.sh [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --user      Install for current user only (default)"
-            echo "  --system    Install system-wide (requires sudo)"
             echo "  --uninstall Remove git-commitai"
             echo "  --help      Show this help message"
+            echo ""
+            echo "The installer will automatically detect if sudo is needed for system directories."
+            echo "On systems with Homebrew or similar, /usr/local may be user-writable."
             exit 0
-            ;;
-        *)
-            INSTALL_TYPE="user"
             ;;
     esac
 
@@ -403,11 +437,10 @@ main() {
     check_prerequisites
 
     # Run installation
-    if [[ "$INSTALL_TYPE" == "system" ]]; then
-        install_system
-    else
-        install_user
-    fi
+    install_system
+
+    # Configure git alias for the current user
+    configure_git_alias
 
     # Configure environment
     configure_environment
@@ -424,6 +457,7 @@ main() {
     print_color $NC "  2. Stage some changes: git add ."
     print_color $NC "  3. Generate commit: git commitai"
     print_color $NC "  4. View help: git commitai --help"
+    print_color $NC "  5. View man page: man git-commitai"
     echo
     print_color $BLUE "For more information: https://github.com/semperai/git-commitai"
 }

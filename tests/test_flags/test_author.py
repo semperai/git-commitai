@@ -1,7 +1,6 @@
 """Tests for --author flag functionality."""
 
 import tempfile
-import subprocess
 from unittest.mock import patch, MagicMock
 import git_commitai
 

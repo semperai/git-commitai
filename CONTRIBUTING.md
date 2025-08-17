@@ -13,6 +13,7 @@ Thanks for considering contributing to Git Commit AI! We welcome contributions f
   - [Pull Requests](#pull-requests)
 - [Development Setup](#development-setup)
 - [Testing](#testing)
+- [Type Checking](#type-checking)
 - [Style Guidelines](#style-guidelines)
   - [Git Commit Messages](#git-commit-messages)
   - [Python Style Guide](#python-style-guide)
@@ -79,10 +80,12 @@ Please follow these steps:
 1. **Fork the repo** and create your branch from `master`
 2. **Add tests** if you've added code that should be tested
 3. **Test against real git** - Ensure your implementation matches `git commit` behavior
-4. **Update documentation** if you've changed APIs or added features
-5. **Ensure the test suite passes** with `pytest`
-6. **Format your code** with `black` and check with `flake8`
-7. **Issue the pull request**
+4. **Add type hints** to any new functions or modified code
+5. **Run type checking** with `mypy` to ensure type safety
+6. **Update documentation** if you've changed APIs or added features
+7. **Ensure the test suite passes** with `pytest`
+8. **Format your code** with `black` and check with `flake8`
+9. **Issue the pull request**
 
 ## Development Setup
 
@@ -101,7 +104,7 @@ source venv/bin/activate  # On Windows use: venv\Scripts\activate
 3. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
-pip install -r requirements-dev.txt  # Development dependencies
+pip install -r requirements-dev.txt  # Development dependencies including mypy
 ```
 
 4. **Install in development mode:**
@@ -154,6 +157,94 @@ def test_feature_matches_git():
     assert git_result.stderr == our_result.stderr  # Errors should be identical
 ```
 
+## Type Checking
+
+We use **type hints** and **mypy** for static type checking to catch bugs early and improve code maintainability.
+
+### Running Type Checks
+
+```bash
+# Basic type checking
+mypy git_commitai.py
+
+# Type check with error codes shown
+mypy git_commitai.py --show-error-codes
+
+# Type check with stricter settings
+mypy git_commitai.py --strict
+
+# Type check all Python files
+mypy .
+```
+
+### Adding Type Hints
+
+All new code should include type hints:
+
+```python
+from typing import List, Optional, Dict, Any
+
+def process_files(filenames: List[str], verbose: bool = False) -> Dict[str, Any]:
+    """Process git files and return their status.
+
+    Args:
+        filenames: List of file paths to process
+        verbose: Whether to output detailed information
+
+    Returns:
+        Dictionary containing file statuses and metadata
+    """
+    result: Dict[str, Any] = {}
+    for filename in filenames:
+        # Your code here
+        pass
+    return result
+```
+
+### Common Type Hints Patterns
+
+```python
+# Optional parameters (can be None)
+def func(param: Optional[str] = None) -> None:
+    pass
+
+# Union types (multiple possible types)
+from typing import Union
+def get_value() -> Union[str, int]:
+    pass
+
+# Function that never returns normally
+from typing import NoReturn
+def exit_with_error(msg: str) -> NoReturn:
+    print(msg)
+    sys.exit(1)
+
+# Subprocess results
+import subprocess
+result: subprocess.CompletedProcess[str] = subprocess.run(..., text=True)
+
+# Type aliases for complex types
+from typing import TypeAlias
+ConfigDict: TypeAlias = Dict[str, Union[str, int, bool]]
+```
+
+### Fixing Type Errors
+
+If mypy reports errors:
+
+1. **Read the error carefully** - mypy errors are usually very descriptive
+2. **Check the mypy documentation** for the specific error code
+3. **Add appropriate type hints** or fix the type mismatch
+4. **Use `cast()` sparingly** when you know better than mypy:
+   ```python
+   from typing import cast
+   value = cast(str, ambiguous_value)  # Tell mypy this is definitely a str
+   ```
+5. **Use `# type: ignore` as last resort** with a comment explaining why:
+   ```python
+   result = some_dynamic_operation()  # type: ignore # Third-party library returns Any
+   ```
+
 ## Style Guidelines
 
 ### Git Commit Messages
@@ -172,7 +263,9 @@ We follow PEP 8 with these tools:
 - **Black** for code formatting (line length: 100)
 - **Flake8** for linting
 - **isort** for import sorting
-- **mypy** for type checking (optional but encouraged)
+- **mypy** for type checking
+
+Run all checks before committing:
 
 ```bash
 # Format code
@@ -185,7 +278,46 @@ flake8 .
 isort .
 
 # Type checking
-mypy .
+mypy git_commitai.py
+
+# Or run all checks at once
+make lint  # If Makefile is available
+```
+
+### Pre-commit Configuration
+
+For automatic checks, create `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        args: [--line-length=100]
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        args: [--max-line-length=100]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.5.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-all]
+```
+
+Then install the hooks:
+```bash
+pre-commit install
+pre-commit run --all-files  # Run on all files
 ```
 
 ### Documentation Style Guide
@@ -194,7 +326,7 @@ mypy .
 - Include code examples where relevant
 - Keep language clear and concise
 - Update the man page (`git-commitai.1`) for user-facing changes
-- Add docstrings to all functions:
+- Add docstrings with type hints to all functions:
 
 ```python
 def example_function(param1: str, param2: int) -> bool:
@@ -225,11 +357,13 @@ If you're adding support for a new git commit flag:
 1. **Study the git documentation and source code** - Understand EXACTLY how git implements this flag
 2. **Test git's behavior extensively** - Try edge cases, combinations with other flags, error conditions
 3. **Implement to match git precisely** - The behavior should be indistinguishable from git commit
-4. **Update the argument parser** in `git-commitai`
-5. **Add comprehensive tests** that verify matching behavior with git
-6. **Update the man page** to document the flag
-7. **Update the README.md** commands table to mark it as supported
-8. **Add examples** showing the flag in use
+4. **Add type hints** to all new functions and parameters
+5. **Update the argument parser** in `git-commitai`
+6. **Add comprehensive tests** that verify matching behavior with git
+7. **Run mypy** to ensure type safety
+8. **Update the man page** to document the flag
+9. **Update the README.md** commands table to mark it as supported
+10. **Add examples** showing the flag in use
 
 Remember: If there's ANY difference from how `git commit` handles the flag, it's a bug that needs to be fixed.
 
@@ -244,10 +378,25 @@ git commit --your-flag --other-flags
 # Test with git commitai
 git commitai --your-flag --other-flags
 
+# Run type checking
+mypy git_commitai.py
+
+# Run tests
+pytest tests/
+
 # These should behave IDENTICALLY except for:
 # 1. The commit message content (since we generate it)
 # 2. The -m flag behavior (provides context to AI instead of full message)
 ```
+
+## Continuous Integration
+
+Our CI pipeline automatically runs:
+- **mypy** type checking
+- **pytest** test suite
+- **Coverage** reporting
+
+Your PR must pass all CI checks before it can be merged.
 
 ## Community
 
