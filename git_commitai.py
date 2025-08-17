@@ -100,12 +100,6 @@ def debug_log(message: str) -> None:
         print(f"DEBUG: {safe_message}", file=sys.stderr)
 
 
-def show_version() -> None:
-    """Show version information and exit."""
-    print(f"git-commitai version {__version__}")
-    sys.exit(0)
-
-
 def show_man_page() -> bool:
     """Try to show the man page, fall back to help text if not available.
 
@@ -1413,10 +1407,6 @@ def main() -> None:
     """Main entry point for git-commitai."""
     global DEBUG
 
-    # Check for --version flag early
-    if "--version" in sys.argv or "-V" in sys.argv:
-        show_version()
-
     # Check for --help flag early and show man page if available
     if "--help" in sys.argv or "-h" in sys.argv:
         if show_man_page():
@@ -1531,8 +1521,8 @@ For more information, visit: https://github.com/semperai/git-commitai
     )
     parser.add_argument(
         "--version",
-        "-V",
-        action="store_true",
+        action="version",
+        version=f"%(prog)s {__version__}",
         help="Show version information and exit",
     )
 
@@ -1543,10 +1533,6 @@ For more information, visit: https://github.com/semperai/git-commitai
     debug_group.add_argument("--model", help="Override model name")
 
     args: argparse.Namespace = parser.parse_args()
-
-    # Handle version flag (though this should have been caught earlier)
-    if args.version:
-        show_version()
 
     # Enable debug mode if flag is set
     if args.debug:
