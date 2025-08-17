@@ -1023,6 +1023,58 @@ def read_gitmessage_template() -> Optional[str]:
     return None
 
 
+def show_dry_run_summary(commit_message: str, args: argparse.Namespace) -> None:
+    """Show what would be committed in dry-run mode.
+
+    Args:
+        commit_message: The generated commit message
+        args: Parsed command line arguments
+    """
+    print("# Dry run mode - no commit will be created")
+    print("#")
+
+    # Show branch info
+    branch = get_current_branch()
+    print(f"# On branch {branch}")
+
+    # Show what would be committed
+    if args.amend:
+        print("# Would amend the previous commit")
+    elif args.allow_empty:
+        print("# Would create an empty commit")
+    else:
+        print("# Changes to be committed:")
+        # Get staged files status
+        status = run_git(["diff", "--cached", "--name-status"])
+        for line in status.split("\n"):
+            if line:
+                print(f"#   {line}")
+
+    # Show generated commit message
+    print("#")
+    print("# Generated commit message:")
+    print("#")
+
+    # Format the commit message with comment prefix
+    for line in commit_message.split('\n'):
+        if line.strip():
+            print(f"# {line}")
+        else:
+            print("#")
+
+    # Show additional info about options
+    print("#")
+    if args.no_verify:
+        print("# (git hooks would be skipped)")
+    if args.author:
+        print(f"# (author would be: {args.author})")
+    if args.date:
+        print(f"# (date would be: {args.date})")
+
+    print("#")
+    print("# To actually commit these changes, run without --dry-run")
+
+
 def make_api_request(config: Dict[str, Any], message: str) -> str:
     """Make API request with retry logic.
 
@@ -1406,6 +1458,7 @@ Examples:
   git-commitai -a                 # Auto-stage all tracked files and commit
   git-commitai --amend            # Amend the previous commit with new message
   git-commitai --allow-empty      # Create an empty commit
+  git-commitai --dry-run          # Show what would be committed without committing
   git-commitai --author "Name <email@example.com>"  # Override author
   git-commitai --date "2024-01-01T12:00:00"  # Override date
   git-commitai --debug            # Enable debug logging
@@ -1491,6 +1544,11 @@ For more information, visit: https://github.com/semperai/git-commitai
         help="Allow creating an empty commit",
     )
     parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Don't actually commit, just show what would be committed",
+    )
+    parser.add_argument(
         "--author",
         help="Override author information (format: 'Name <email@example.com>')",
     )
@@ -1519,6 +1577,8 @@ For more information, visit: https://github.com/semperai/git-commitai
         debug_log("Git Commit AI started with --debug flag")
         debug_log(f"Python version: {sys.version}")
         debug_log(f"Arguments: {sys.argv[1:]}")
+        if args.dry_run:
+            debug_log("DRY RUN MODE - No commit will be created")
 
     # Check if in a git repository first
     try:
@@ -1589,6 +1649,12 @@ Generate the commit message following the rules above:"""
 
     # Make API request with retry logic
     commit_message: str = make_api_request(config, prompt)
+
+    # If dry-run mode, show what would be committed and exit
+    if args.dry_run:
+        debug_log("Dry-run mode: showing summary and exiting")
+        show_dry_run_summary(commit_message, args)
+        sys.exit(0)
 
     # Get git directory
     git_dir: str = get_git_dir()
