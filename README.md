@@ -464,7 +464,6 @@ The following table shows all standard `git commit` flags and their support stat
 - 📖 **Full documentation** - Comprehensive man page with `git commitai --help`
 - ⚡ **Smart context** - Understands both diffs and full file contents
 - 🎯 **Git native** - Respects your git editor, hooks, and workflow
-- 🔍 **Dry-run mode** - Preview generated messages without committing
 - 🐛 **Debug mode** - Built-in debugging for troubleshooting issues
 - 🔄 **CLI overrides** - Override API settings per-command for testing and flexibility
 - 📋 **Template support** - Automatically uses your `.gitmessage` templates for project-specific conventions
