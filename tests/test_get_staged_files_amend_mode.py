@@ -26,3 +26,11 @@ class TestGetStagedFilesAmendMode:
             result = git_commitai.get_staged_files(amend=True)
             assert "file content from HEAD" in result
 
+            mock_run.side_effect = side_effect
+            result = git_commitai.get_staged_files(amend=True)
+            assert "file content from HEAD" in result
+            # Ensure the fallback path was taken and output is correctly formatted
+            mock_run.assert_any_call(["show", ":file.txt"], check=False)
+            mock_run.assert_any_call(["show", "HEAD:file.txt"], check=False)
+            assert "file.txt\n```\n" in result
+            assert "fatal:" not in result
