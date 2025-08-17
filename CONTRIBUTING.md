@@ -104,19 +104,16 @@ source venv/bin/activate  # On Windows use: venv\Scripts\activate
 3. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
-pip install -r requirements-dev.txt  # Development dependencies including mypy
 ```
 
 4. **Install in development mode:**
 ```bash
 pip install -e .
-# Or use the installer for local development
-./install.sh --user
 ```
 
-5. **Set up pre-commit hooks (optional but recommended):**
+5. **Run the application:**
 ```bash
-pre-commit install
+./git_commitai.py
 ```
 
 ## Testing
@@ -133,7 +130,7 @@ pytest
 pytest --cov=git_commitai --cov-report=html
 
 # Run specific test file
-pytest tests/test_commit.py
+pytest tests/test_commit_message.py
 
 # Run with verbose output
 pytest -v
@@ -166,15 +163,6 @@ We use **type hints** and **mypy** for static type checking to catch bugs early 
 ```bash
 # Basic type checking
 mypy git_commitai.py
-
-# Type check with error codes shown
-mypy git_commitai.py --show-error-codes
-
-# Type check with stricter settings
-mypy git_commitai.py --strict
-
-# Type check all Python files
-mypy .
 ```
 
 ### Adding Type Hints
@@ -284,46 +272,8 @@ mypy git_commitai.py
 make lint  # If Makefile is available
 ```
 
-### Pre-commit Configuration
-
-For automatic checks, create `.pre-commit-config.yaml`:
-
-```yaml
-repos:
-  - repo: https://github.com/psf/black
-    rev: 23.7.0
-    hooks:
-      - id: black
-        args: [--line-length=100]
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.1.0
-    hooks:
-      - id: flake8
-        args: [--max-line-length=100]
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.5.0
-    hooks:
-      - id: mypy
-        additional_dependencies: [types-all]
-```
-
-Then install the hooks:
-```bash
-pre-commit install
-pre-commit run --all-files  # Run on all files
-```
-
 ### Documentation Style Guide
 
-- Use Markdown for documentation files
-- Include code examples where relevant
 - Keep language clear and concise
 - Update the man page (`git-commitai.1`) for user-facing changes
 - Add docstrings with type hints to all functions:
@@ -383,10 +333,6 @@ mypy git_commitai.py
 
 # Run tests
 pytest tests/
-
-# These should behave IDENTICALLY except for:
-# 1. The commit message content (since we generate it)
-# 2. The -m flag behavior (provides context to AI instead of full message)
 ```
 
 ## Continuous Integration
@@ -401,7 +347,6 @@ Your PR must pass all CI checks before it can be merged.
 ## Community
 
 - **GitHub Issues**: For bug reports and feature requests
-- **GitHub Discussions**: For questions and general discussion
 - **Pull Requests**: For contributing code
 
 ## Recognition
