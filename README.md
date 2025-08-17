@@ -367,32 +367,42 @@ The following table shows all standard `git commit` flags and their support stat
 |------|-------------|--------|
 | `-a, --all` | Auto-stage all tracked modified files | ✅ **Supported** |
 | `--interactive` | Interactively add files | ❌ Not supported |
-| `--patch` | Interactively add hunks of patch | ❌ Not supported |
-| `-s, --signoff` | Add Signed-off-by trailer | ❌ Not supported |
-| `-v, --verbose` | Show diff in commit message editor | ✅ **Supported** |
-| `-u<mode>, --untracked-files[=<mode>]` | Show untracked files | ❌ Not supported |
-| `--amend` | Amend the previous commit | ✅ **Supported** |
-| `--dry-run` | Don't actually commit, just show what would be committed | ✅ **Supported** |
-| `-c, --reedit-message=<commit>` | Reuse and edit message from specified commit | ❌ Not supported |
-| `-C, --reuse-message=<commit>` | Reuse message from specified commit | ❌ Not supported |
+| `-p, --patch` | Interactively add hunks of patch | ❌ Not supported |
+| `-C <commit>, --reuse-message=<commit>` | Reuse message from specified commit | ❌ Not supported |
+| `-c <commit>, --reedit-message=<commit>` | Reuse and edit message from specified commit | ❌ Not supported |
+| `--fixup=[(amend\|reword):]<commit>` | Construct commit for autosquash rebase | ❌ Not supported |
 | `--squash=<commit>` | Construct commit for squashing | ❌ Not supported |
-| `--fixup=<commit>` | Construct commit for autosquash rebase | ❌ Not supported |
-| `-F, --file=<file>` | Read commit message from file | ❌ Not supported |
 | `--reset-author` | Reset author information | ❌ Not supported |
-| `--allow-empty` | Allow empty commits | ✅ **Supported** |
-| `--allow-empty-message` | Allow commits with empty message | ❌ Not supported |
-| `--no-verify, -n` | Skip pre-commit and commit-msg hooks | ✅ **Supported** |
-| `-e, --edit` | Force edit of commit message | ❌ Not supported |
+| `--short` | Show short-format status (dry-run) | ❌ Not supported |
+| `--branch` | Show branch info in short-format | ❌ Not supported |
+| `--porcelain` | Machine-readable output (dry-run) | ❌ Not supported |
+| `--long` | Show long-format status (dry-run) | ❌ Not supported |
+| `-z, --null` | Terminate entries with NUL | ❌ Not supported |
+| `-F <file>, --file=<file>` | Read commit message from file | ❌ Not supported |
 | `--author=<author>` | Override author information | ✅ **Supported** |
 | `--date=<date>` | Override author date | ✅ **Supported** |
+| `-m <msg>, --message=<msg>` | Commit message | ⚠️ **Modified** (provides context to AI) |
+| `-t <file>, --template=<file>` | Use template file for message | ❌ Not supported |
+| `-s, --signoff, --no-signoff` | Add Signed-off-by trailer | ❌ Not supported |
+| `--trailer <token>[(=\|:)<value>]` | Add custom trailers to message | ❌ Not supported |
+| `-n, --no-verify` | Skip pre-commit and commit-msg hooks | ✅ **Supported** |
+| `--allow-empty` | Allow empty commits | ✅ **Supported** |
+| `--allow-empty-message` | Allow commits with empty message | ❌ Not supported |
 | `--cleanup=<mode>` | Set commit message cleanup mode | ❌ Not supported |
-| `--status` | Include git status in commit editor | ❌ Not supported |
-| `--no-status` | Don't include git status in commit editor | ❌ Not supported |
+| `-e, --edit` | Force edit of commit message | ❌ Not supported |
+| `--no-edit` | Use message without editing | ❌ Not supported |
+| `--amend` | Amend the previous commit | ✅ **Supported** |
+| `--no-post-rewrite` | Bypass post-rewrite hook | ❌ Not supported |
 | `-i, --include` | Stage specified files in addition to staged | ❌ Not supported |
 | `-o, --only` | Commit only specified files | ❌ Not supported |
 | `--pathspec-from-file=<file>` | Read pathspec from file | ❌ Not supported |
 | `--pathspec-file-nul` | NUL-separated pathspec file | ❌ Not supported |
-| `--trailer <token>[(=\|:)<value>]` | Add trailers to commit message | ❌ Not supported |
+| `-u[<mode>], --untracked-files[=<mode>]` | Show untracked files | ❌ Not supported |
+| `-v, --verbose` | Show diff in commit message editor | ✅ **Supported** |
+| `-q, --quiet` | Suppress commit summary message | ❌ Not supported |
+| `--dry-run` | Don't actually commit, just show what would be committed | ✅ **Supported** |
+| `--status` | Include git status in commit editor | ❌ Not supported |
+| `--no-status` | Don't include git status in commit editor | ❌ Not supported |
 | `-S[<keyid>], --gpg-sign[=<keyid>]` | GPG-sign commit | ❌ Not supported |
 | `--no-gpg-sign` | Don't GPG-sign commit | ❌ Not supported |
 | `--` | Separate paths from options | ❌ Not supported |
@@ -400,6 +410,7 @@ The following table shows all standard `git commit` flags and their support stat
 
 #### Legend
 - ✅ **Supported** - Fully functional in git-commitai
+- ⚠️ **Modified** - Works differently than standard git commit
 - ❌ Not supported - Not yet implemented
 
 ### Supported Providers
