@@ -354,7 +354,7 @@ Your custom prompt template can use these placeholders:
 
 #### Configuration Precedence
 
-For the model setting, the precedence order is:
+For model selection, the precedence is:
 1. CLI flag (`--model`)
 2. Environment variable (`GIT_COMMIT_AI_MODEL`)
 3. `.gitcommitai` file model specification
