@@ -1,6 +1,6 @@
 .\" Manpage for git-commitai
 .\" Contact: https://github.com/semperai/git-commitai
-.TH GIT-COMMITAI 1 "2024" "1.0.0" "Git Commit AI Manual"
+.TH GIT-COMMITAI 1 "2025" "0.1.0" "Git Commit AI Manual"
 
 .SH NAME
 git-commitai \- Generate AI-powered git commit messages
@@ -21,6 +21,7 @@ git-commitai \- Generate AI-powered git commit messages
 [\fB\-\-api\-url\fR \fIurl\fR]
 [\fB\-\-model\fR \fIname\fR]
 [\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-\-version\fR]
 
 .SH DESCRIPTION
 .B git-commitai
@@ -55,6 +56,10 @@ Overrides the \fBGIT_COMMIT_AI_URL\fR environment variable.
 .BR \-\-model " " \fIname\fR
 Override the AI model name for this commit.
 Overrides the \fBGIT_COMMIT_AI_MODEL\fR environment variable.
+
+.TP
+.BR \-\-version
+Display version information and exit.
 
 .SS Standard Git Commit Options
 .TP
@@ -99,7 +104,7 @@ Display help information and exit.
 .SH ENVIRONMENT
 .TP
 .B GIT_COMMIT_AI_KEY
-Your API key for the AI service (required).
+Your API key for the AI service (if your provider requires one).
 Can be overridden with \fB--api-key\fR.
 
 .TP
@@ -164,7 +169,7 @@ $ git commitai --author "Bot <bot@ci.com>" --date "@1705329000"
 .SS Using Different Models
 .nf
 # Use a different model for this commit
-$ git commitai --model "gpt-4o"
+$ git commitai --model "openai/gpt-4o"
 
 # Use a local LLM
 $ git commitai --api-url "http://localhost:11434/v1/chat/completions" \\
