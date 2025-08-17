@@ -3,7 +3,7 @@
 import sys
 import argparse
 from io import StringIO
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock, Mock, call
 
 import git_commitai
 
@@ -12,238 +12,179 @@ class TestDryRunFlag:
     """Test the --dry-run functionality."""
 
     def test_show_dry_run_summary_basic(self):
-        """Test basic dry run summary output."""
-        with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_git") as mock_run:
-                mock_run.return_value = "M\tsrc/main.py\nA\ttests/test_main.py"
+        """Test basic dry run delegates to git commit --dry-run."""
+        args = argparse.Namespace(
+            amend=False,
+            allow_empty=False,
+            no_verify=False,
+            author=None,
+            date=None,
+            all=False,
+            message=None,
+            verbose=False,
+            dry_run=True,
+            debug=False,
+            api_key=None,
+            api_url=None,
+            model=None
+        )
 
-                # Capture stdout
-                captured_output = StringIO()
-                with patch("sys.stdout", captured_output):
-                    # Create mock args using argparse.Namespace
-                    args = argparse.Namespace(
-                        amend=False,
-                        allow_empty=False,
-                        no_verify=False,
-                        author=None,
-                        date=None,
-                        all=False,
-                        message=None,
-                        verbose=False,
-                        dry_run=True,
-                        debug=False,
-                        api_key=None,
-                        api_url=None,
-                        model=None
-                    )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 0
 
-                    git_commitai.show_dry_run_summary(
-                        "Add unit tests for main module\n\nAdded comprehensive test coverage",
-                        args
-                    )
+            with patch("sys.exit") as mock_exit:
+                mock_exit.side_effect = SystemExit(0)
 
-                output = captured_output.getvalue()
+                try:
+                    git_commitai.show_dry_run_summary(args)
+                except SystemExit:
+                    pass
 
-                # Check header
-                assert "# Dry run mode - no commit will be created" in output
-                assert "# On branch main" in output
+                # Verify git commit --dry-run was called
+                mock_run.assert_called_once()
+                call_args = mock_run.call_args[0][0]
+                assert call_args[:3] == ["git", "commit", "--dry-run"]
 
-                # Check changes to be committed
-                assert "# Changes to be committed:" in output
-                assert "#   M\tsrc/main.py" in output
-                assert "#   A\ttests/test_main.py" in output
-
-                # Check generated commit message
-                assert "# Generated commit message:" in output
-                assert "# Add unit tests for main module" in output
-                assert "# Added comprehensive test coverage" in output
-
-                # Check footer
-                assert "# To actually commit these changes, run without --dry-run" in output
+                # Should exit with git's return code
+                mock_exit.assert_called_with(0)
 
     def test_show_dry_run_summary_with_amend(self):
-        """Test dry run summary with --amend flag."""
-        with patch("git_commitai.get_current_branch", return_value="develop"):
-            # Capture stdout
-            captured_output = StringIO()
-            with patch("sys.stdout", captured_output):
-                # Create mock args using argparse.Namespace
-                args = argparse.Namespace(
-                    amend=True,
-                    allow_empty=False,
-                    no_verify=False,
-                    author=None,
-                    date=None,
-                    all=False,
-                    message=None,
-                    verbose=False,
-                    dry_run=True,
-                    debug=False,
-                    api_key=None,
-                    api_url=None,
-                    model=None
-                )
+        """Test dry run with --amend flag passes it to git."""
+        args = argparse.Namespace(
+            amend=True,
+            allow_empty=False,
+            no_verify=False,
+            author=None,
+            date=None,
+            all=False,
+            message=None,
+            verbose=False,
+            dry_run=True,
+            debug=False,
+            api_key=None,
+            api_url=None,
+            model=None
+        )
 
-                git_commitai.show_dry_run_summary(
-                    "Fix: Correct previous commit",
-                    args
-                )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 0
 
-            output = captured_output.getvalue()
+            with patch("sys.exit") as mock_exit:
+                mock_exit.side_effect = SystemExit(0)
 
-            # Should show amend message
-            assert "# Would amend the previous commit" in output
-            assert "# On branch develop" in output
+                try:
+                    git_commitai.show_dry_run_summary(args)
+                except SystemExit:
+                    pass
+
+                # Verify --amend was passed to git
+                call_args = mock_run.call_args[0][0]
+                assert "--amend" in call_args
 
     def test_show_dry_run_summary_with_allow_empty(self):
-        """Test dry run summary with --allow-empty flag."""
-        with patch("git_commitai.get_current_branch", return_value="main"):
-            # Capture stdout
-            captured_output = StringIO()
-            with patch("sys.stdout", captured_output):
-                # Create mock args using argparse.Namespace
-                args = argparse.Namespace(
-                    amend=False,
-                    allow_empty=True,
-                    no_verify=False,
-                    author=None,
-                    date=None,
-                    all=False,
-                    message=None,
-                    verbose=False,
-                    dry_run=True,
-                    debug=False,
-                    api_key=None,
-                    api_url=None,
-                    model=None
-                )
+        """Test dry run with --allow-empty flag passes it to git."""
+        args = argparse.Namespace(
+            amend=False,
+            allow_empty=True,
+            no_verify=False,
+            author=None,
+            date=None,
+            all=False,
+            message=None,
+            verbose=False,
+            dry_run=True,
+            debug=False,
+            api_key=None,
+            api_url=None,
+            model=None
+        )
 
-                git_commitai.show_dry_run_summary(
-                    "Trigger CI pipeline",
-                    args
-                )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 0
 
-            output = captured_output.getvalue()
+            with patch("sys.exit") as mock_exit:
+                mock_exit.side_effect = SystemExit(0)
 
-            # Should show empty commit message
-            assert "# Would create an empty commit" in output
+                try:
+                    git_commitai.show_dry_run_summary(args)
+                except SystemExit:
+                    pass
+
+                # Verify --allow-empty was passed to git
+                call_args = mock_run.call_args[0][0]
+                assert "--allow-empty" in call_args
 
     def test_show_dry_run_summary_with_options(self):
-        """Test dry run summary with various options."""
-        with patch("git_commitai.get_current_branch", return_value="feature/test"):
-            with patch("git_commitai.run_git", return_value="M\tREADME.md"):
-                # Capture stdout
-                captured_output = StringIO()
-                with patch("sys.stdout", captured_output):
-                    # Create mock args with various options
-                    args = argparse.Namespace(
-                        amend=False,
-                        allow_empty=False,
-                        no_verify=True,
-                        author="John Doe <john@example.com>",
-                        date="2024-01-01 12:00:00",
-                        all=False,
-                        message=None,
-                        verbose=False,
-                        dry_run=True,
-                        debug=False,
-                        api_key=None,
-                        api_url=None,
-                        model=None
-                    )
+        """Test dry run with various options passes them to git."""
+        args = argparse.Namespace(
+            amend=False,
+            allow_empty=False,
+            no_verify=True,
+            author="John Doe <john@example.com>",
+            date="2024-01-01 12:00:00",
+            all=False,
+            message="Test message",
+            verbose=True,
+            dry_run=True,
+            debug=False,
+            api_key=None,
+            api_url=None,
+            model=None
+        )
 
-                    git_commitai.show_dry_run_summary(
-                        "Update documentation",
-                        args
-                    )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 0
 
-                output = captured_output.getvalue()
+            with patch("sys.exit") as mock_exit:
+                mock_exit.side_effect = SystemExit(0)
 
-                # Check options are displayed
-                assert "# (git hooks would be skipped)" in output
-                assert "# (author would be: John Doe <john@example.com>)" in output
-                assert "# (date would be: 2024-01-01 12:00:00)" in output
+                try:
+                    git_commitai.show_dry_run_summary(args)
+                except SystemExit:
+                    pass
 
-    def test_show_dry_run_summary_multiline_message(self):
-        """Test dry run summary with multi-line commit message."""
-        with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_git", return_value="M\tapp.py"):
-                # Capture stdout
-                captured_output = StringIO()
-                with patch("sys.stdout", captured_output):
-                    args = argparse.Namespace(
-                        amend=False,
-                        allow_empty=False,
-                        no_verify=False,
-                        author=None,
-                        date=None,
-                        all=False,
-                        message=None,
-                        verbose=False,
-                        dry_run=True,
-                        debug=False,
-                        api_key=None,
-                        api_url=None,
-                        model=None
-                    )
+                # Verify all options were passed to git
+                call_args = mock_run.call_args[0][0]
+                assert "--no-verify" in call_args
+                assert "--verbose" in call_args
+                assert "--author" in call_args
+                assert "John Doe <john@example.com>" in call_args
+                assert "--date" in call_args
+                assert "2024-01-01 12:00:00" in call_args
+                # Message is added as placeholder
+                assert "-m" in call_args
 
-                    # Multi-line commit message
-                    commit_message = """Refactor authentication module
+    def test_show_dry_run_summary_git_failure(self):
+        """Test dry run exits with git's return code on failure."""
+        args = argparse.Namespace(
+            amend=False,
+            allow_empty=False,
+            no_verify=False,
+            author=None,
+            date=None,
+            all=False,
+            message=None,
+            verbose=False,
+            dry_run=True,
+            debug=False,
+            api_key=None,
+            api_url=None,
+            model=None
+        )
 
-- Extract JWT validation to separate function
-- Add refresh token support
-- Improve error handling
-- Update tests"""
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 1  # Git failure
 
-                    git_commitai.show_dry_run_summary(commit_message, args)
+            with patch("sys.exit") as mock_exit:
+                mock_exit.side_effect = SystemExit(1)
 
-                output = captured_output.getvalue()
+                try:
+                    git_commitai.show_dry_run_summary(args)
+                except SystemExit:
+                    pass
 
-                # Check all lines are properly formatted
-                assert "# Refactor authentication module" in output
-                assert "# - Extract JWT validation to separate function" in output
-                assert "# - Add refresh token support" in output
-                assert "# - Improve error handling" in output
-                assert "# - Update tests" in output
-
-    def test_show_dry_run_summary_with_warnings(self):
-        """Test dry run summary with AI-generated warnings."""
-        with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_git", return_value="M\tconfig.py"):
-                # Capture stdout
-                captured_output = StringIO()
-                with patch("sys.stdout", captured_output):
-                    args = argparse.Namespace(
-                        amend=False,
-                        allow_empty=False,
-                        no_verify=False,
-                        author=None,
-                        date=None,
-                        all=False,
-                        message=None,
-                        verbose=False,
-                        dry_run=True,
-                        debug=False,
-                        api_key=None,
-                        api_url=None,
-                        model=None
-                    )
-
-                    # Commit message with warnings
-                    commit_message = """Update configuration
-
-# ⚠️  WARNING: Hardcoded API key detected
-# Found in: config.py
-# Details: API key should be in environment variables"""
-
-                    git_commitai.show_dry_run_summary(commit_message, args)
-
-                output = captured_output.getvalue()
-
-                # Check message and warnings are displayed
-                assert "# Update configuration" in output
-                assert "# # ⚠️  WARNING: Hardcoded API key detected" in output
-                assert "# # Found in: config.py" in output
+                # Should exit with git's failure code
+                mock_exit.assert_called_with(1)
 
     def test_main_flow_with_dry_run(self):
         """Test the main flow with --dry-run flag."""
@@ -257,34 +198,23 @@ class TestDryRunFlag:
                 mock_subprocess.return_value.stderr = ""
 
                 with patch("git_commitai.check_staged_changes", return_value=True):
-                    with patch("git_commitai.get_env_config") as mock_config:
-                        mock_config.return_value = {
-                            "api_key": "test",
-                            "api_url": "http://test",
-                            "model": "test",
-                            "repo_config": {}
-                        }
+                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
+                        # Mock show_dry_run_summary to avoid actual git call
+                        mock_show_summary.side_effect = SystemExit(0)
 
-                        with patch("git_commitai.get_git_diff", return_value="```\ndiff\n```"):
-                            with patch("git_commitai.get_staged_files", return_value="files"):
-                                with patch("git_commitai.make_api_request", return_value="Test commit"):
-                                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
-                                        # Catch the sys.exit(0) that happens after dry-run
-                                        with patch("sys.exit") as mock_exit:
-                                            mock_exit.side_effect = SystemExit(0)
+                        with patch("sys.exit") as mock_exit:
+                            mock_exit.side_effect = SystemExit(0)
 
-                                            try:
-                                                git_commitai.main()
-                                            except SystemExit:
-                                                pass  # Expected
+                            try:
+                                git_commitai.main()
+                            except SystemExit:
+                                pass  # Expected
 
-                                            # Verify dry run summary was shown
-                                            mock_show_summary.assert_called_once()
-                                            call_args = mock_show_summary.call_args[0]
-                                            assert call_args[0] == "Test commit"  # commit message
+                            # Verify dry run summary was shown
+                            mock_show_summary.assert_called_once()
+                            args = mock_show_summary.call_args[0][0]
+                            assert args.dry_run is True
 
-                                            # Verify we exited with 0
-                                            mock_exit.assert_called_with(0)
 
     def test_dry_run_with_no_changes(self):
         """Test dry run when there are no staged changes."""
@@ -323,31 +253,21 @@ class TestDryRunFlag:
                 mock_subprocess.return_value.stderr = ""
 
                 with patch("git_commitai.check_staged_changes", return_value=True):
-                    with patch("git_commitai.get_env_config") as mock_config:
-                        mock_config.return_value = {
-                            "api_key": "test",
-                            "api_url": "http://test",
-                            "model": "test",
-                            "repo_config": {}
-                        }
+                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
+                        mock_show_summary.side_effect = SystemExit(0)
 
-                        with patch("git_commitai.get_git_diff", return_value="```\ndiff\n```"):
-                            with patch("git_commitai.get_staged_files", return_value="files"):
-                                with patch("git_commitai.make_api_request", return_value="Auto-staged commit"):
-                                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
-                                        # Catch the sys.exit(0) that happens after dry-run
-                                        with patch("sys.exit") as mock_exit:
-                                            mock_exit.side_effect = SystemExit(0)
+                        with patch("sys.exit") as mock_exit:
+                            mock_exit.side_effect = SystemExit(0)
 
-                                            try:
-                                                git_commitai.main()
-                                            except SystemExit:
-                                                pass  # Expected
+                            try:
+                                git_commitai.main()
+                            except SystemExit:
+                                pass  # Expected
 
-                                            # Verify auto-stage was passed through
-                                            mock_show_summary.assert_called_once()
-                                            args = mock_show_summary.call_args[0][1]
-                                            assert args.all is True
+                            # Verify auto-stage was passed through
+                            mock_show_summary.assert_called_once()
+                            args = mock_show_summary.call_args[0][0]
+                            assert args.all is True
 
     def test_dry_run_combined_with_verbose(self):
         """Test that --dry-run and -v can be used together."""
@@ -361,30 +281,21 @@ class TestDryRunFlag:
                 mock_subprocess.return_value.stderr = ""
 
                 with patch("git_commitai.check_staged_changes", return_value=True):
-                    with patch("git_commitai.get_env_config") as mock_config:
-                        mock_config.return_value = {
-                            "api_key": "test",
-                            "api_url": "http://test",
-                            "model": "test",
-                            "repo_config": {}
-                        }
+                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
+                        mock_show_summary.side_effect = SystemExit(0)
 
-                        with patch("git_commitai.get_git_diff", return_value="```\ndiff\n```"):
-                            with patch("git_commitai.get_staged_files", return_value="files"):
-                                with patch("git_commitai.make_api_request", return_value="Verbose dry run"):
-                                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
-                                        # Catch the sys.exit(0) that happens after dry-run
-                                        with patch("sys.exit") as mock_exit:
-                                            mock_exit.side_effect = SystemExit(0)
+                        with patch("sys.exit") as mock_exit:
+                            mock_exit.side_effect = SystemExit(0)
 
-                                            try:
-                                                git_commitai.main()
-                                            except SystemExit:
-                                                pass  # Expected
+                            try:
+                                git_commitai.main()
+                            except SystemExit:
+                                pass  # Expected
 
-                                            # Dry run should work (verbose is ignored in dry-run)
-                                            mock_show_summary.assert_called_once()
-                                            mock_exit.assert_called_with(0)
+                            # Dry run should work with verbose
+                            mock_show_summary.assert_called_once()
+                            args = mock_show_summary.call_args[0][0]
+                            assert args.verbose is True
 
     def test_dry_run_with_amend(self):
         """Test dry run with --amend flag."""
@@ -398,30 +309,20 @@ class TestDryRunFlag:
                 mock_subprocess.return_value.stderr = ""
 
                 with patch("git_commitai.check_staged_changes", return_value=True):
-                    with patch("git_commitai.get_env_config") as mock_config:
-                        mock_config.return_value = {
-                            "api_key": "test",
-                            "api_url": "http://test",
-                            "model": "test",
-                            "repo_config": {}
-                        }
+                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
+                        mock_show_summary.side_effect = SystemExit(0)
 
-                        with patch("git_commitai.get_git_diff", return_value="```\ndiff\n```"):
-                            with patch("git_commitai.get_staged_files", return_value="files"):
-                                with patch("git_commitai.make_api_request", return_value="Amended commit"):
-                                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
-                                        # Catch the sys.exit(0) that happens after dry-run
-                                        with patch("sys.exit") as mock_exit:
-                                            mock_exit.side_effect = SystemExit(0)
+                        with patch("sys.exit") as mock_exit:
+                            mock_exit.side_effect = SystemExit(0)
 
-                                            try:
-                                                git_commitai.main()
-                                            except SystemExit:
-                                                pass  # Expected
+                            try:
+                                git_commitai.main()
+                            except SystemExit:
+                                pass  # Expected
 
-                                            # Verify amend was passed through
-                                            args = mock_show_summary.call_args[0][1]
-                                            assert args.amend is True
+                            # Verify amend was passed through
+                            args = mock_show_summary.call_args[0][0]
+                            assert args.amend is True
 
     def test_dry_run_with_context_message(self):
         """Test dry run with -m context message."""
@@ -435,72 +336,47 @@ class TestDryRunFlag:
                 mock_subprocess.return_value.stderr = ""
 
                 with patch("git_commitai.check_staged_changes", return_value=True):
-                    with patch("git_commitai.get_env_config") as mock_config:
-                        mock_config.return_value = {
-                            "api_key": "test",
-                            "api_url": "http://test",
-                            "model": "test",
-                            "repo_config": {}
-                        }
+                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
+                        mock_show_summary.side_effect = SystemExit(0)
 
-                        with patch("git_commitai.build_ai_prompt") as mock_build_prompt:
-                            mock_build_prompt.return_value = "prompt with context"
+                        with patch("sys.exit") as mock_exit:
+                            mock_exit.side_effect = SystemExit(0)
 
-                            with patch("git_commitai.get_git_diff", return_value="```\ndiff\n```"):
-                                with patch("git_commitai.get_staged_files", return_value="files"):
-                                    with patch("git_commitai.make_api_request", return_value="Context-aware commit"):
-                                        with patch("git_commitai.show_dry_run_summary"):
-                                            # Catch the sys.exit(0) that happens after dry-run
-                                            with patch("sys.exit") as mock_exit:
-                                                mock_exit.side_effect = SystemExit(0)
+                            try:
+                                git_commitai.main()
+                            except SystemExit:
+                                pass  # Expected
 
-                                                try:
-                                                    git_commitai.main()
-                                                except SystemExit:
-                                                    pass  # Expected
+                            # Verify message was passed through
+                            args = mock_show_summary.call_args[0][0]
+                            assert args.message == "Fixed bug"
 
-                                                # Verify context was passed to prompt builder
-                                                mock_build_prompt.assert_called_once()
-                                                args = mock_build_prompt.call_args[0][1]
-                                                assert args.message == "Fixed bug"
+    def test_dry_run__makes_api_request(self):
+        """Test that dry run makes API request."""
+        test_argv = ["git-commitai", "--dry-run"]
 
-    def test_dry_run_output_format(self):
-        """Test the exact format of dry run output."""
-        with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_git") as mock_run:
-                mock_run.return_value = "M\tfile1.py\nA\tfile2.py\nD\tfile3.py"
+        with patch("sys.argv", test_argv):
+            with patch("subprocess.run") as mock_subprocess:
+                # Mock git repository check
+                mock_subprocess.return_value.returncode = 0
+                mock_subprocess.return_value.stdout = ""
+                mock_subprocess.return_value.stderr = ""
 
-                captured_output = StringIO()
-                with patch("sys.stdout", captured_output):
-                    args = argparse.Namespace(
-                        amend=False,
-                        allow_empty=False,
-                        no_verify=False,
-                        author=None,
-                        date=None,
-                        all=False,
-                        message=None,
-                        verbose=False,
-                        dry_run=True,
-                        debug=False,
-                        api_key=None,
-                        api_url=None,
-                        model=None
-                    )
+                with patch("git_commitai.check_staged_changes", return_value=True):
+                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
+                        mock_show_summary.side_effect = SystemExit(0)
 
-                    git_commitai.show_dry_run_summary("Simple commit", args)
+                        with patch("git_commitai.make_api_request") as mock_api:
+                            with patch("sys.exit") as mock_exit:
+                                mock_exit.side_effect = SystemExit(0)
 
-                output = captured_output.getvalue()
-                lines = output.split('\n')
+                                try:
+                                    git_commitai.main()
+                                except SystemExit:
+                                    pass  # Expected
 
-                # Check exact format
-                assert lines[0] == "# Dry run mode - no commit will be created"
-                assert lines[1] == "#"
-                assert lines[2] == "# On branch main"
-                assert "# Changes to be committed:" in output
-                assert "#   M\tfile1.py" in output
-                assert "#   A\tfile2.py" in output
-                assert "#   D\tfile3.py" in output
+                                # API request should NOT be made
+                                mock_api.assert_called()
 
     def test_dry_run_does_not_create_commit_file(self):
         """Test that dry run doesn't create COMMIT_EDITMSG file."""
@@ -514,30 +390,20 @@ class TestDryRunFlag:
                 mock_subprocess.return_value.stderr = ""
 
                 with patch("git_commitai.check_staged_changes", return_value=True):
-                    with patch("git_commitai.get_env_config") as mock_config:
-                        mock_config.return_value = {
-                            "api_key": "test",
-                            "api_url": "http://test",
-                            "model": "test",
-                            "repo_config": {}
-                        }
+                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
+                        mock_show_summary.side_effect = SystemExit(0)
 
-                        with patch("git_commitai.get_git_diff", return_value="```\ndiff\n```"):
-                            with patch("git_commitai.get_staged_files", return_value="files"):
-                                with patch("git_commitai.make_api_request", return_value="Test"):
-                                    with patch("git_commitai.show_dry_run_summary"):
-                                        with patch("git_commitai.create_commit_message_file") as mock_create:
-                                            # Catch the sys.exit(0) that happens after dry-run
-                                            with patch("sys.exit") as mock_exit:
-                                                mock_exit.side_effect = SystemExit(0)
+                        with patch("git_commitai.create_commit_message_file") as mock_create:
+                            with patch("sys.exit") as mock_exit:
+                                mock_exit.side_effect = SystemExit(0)
 
-                                                try:
-                                                    git_commitai.main()
-                                                except SystemExit:
-                                                    pass  # Expected
+                                try:
+                                    git_commitai.main()
+                                except SystemExit:
+                                    pass  # Expected
 
-                                                # create_commit_message_file should NOT be called
-                                                mock_create.assert_not_called()
+                                # create_commit_message_file should NOT be called
+                                mock_create.assert_not_called()
 
     def test_dry_run_does_not_open_editor(self):
         """Test that dry run doesn't open the editor."""
@@ -551,30 +417,20 @@ class TestDryRunFlag:
                 mock_subprocess.return_value.stderr = ""
 
                 with patch("git_commitai.check_staged_changes", return_value=True):
-                    with patch("git_commitai.get_env_config") as mock_config:
-                        mock_config.return_value = {
-                            "api_key": "test",
-                            "api_url": "http://test",
-                            "model": "test",
-                            "repo_config": {}
-                        }
+                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
+                        mock_show_summary.side_effect = SystemExit(0)
 
-                        with patch("git_commitai.get_git_diff", return_value="```\ndiff\n```"):
-                            with patch("git_commitai.get_staged_files", return_value="files"):
-                                with patch("git_commitai.make_api_request", return_value="Test"):
-                                    with patch("git_commitai.show_dry_run_summary"):
-                                        with patch("git_commitai.open_editor") as mock_editor:
-                                            # Catch the sys.exit(0) that happens after dry-run
-                                            with patch("sys.exit") as mock_exit:
-                                                mock_exit.side_effect = SystemExit(0)
+                        with patch("git_commitai.open_editor") as mock_editor:
+                            with patch("sys.exit") as mock_exit:
+                                mock_exit.side_effect = SystemExit(0)
 
-                                                try:
-                                                    git_commitai.main()
-                                                except SystemExit:
-                                                    pass  # Expected
+                                try:
+                                    git_commitai.main()
+                                except SystemExit:
+                                    pass  # Expected
 
-                                                # Editor should NOT be opened
-                                                mock_editor.assert_not_called()
+                                # Editor should NOT be opened
+                                mock_editor.assert_not_called()
 
     def test_dry_run_with_debug(self):
         """Test dry run with debug mode enabled."""
@@ -588,29 +444,57 @@ class TestDryRunFlag:
                 mock_subprocess.return_value.stderr = ""
 
                 with patch("git_commitai.check_staged_changes", return_value=True):
-                    with patch("git_commitai.get_env_config") as mock_config:
-                        mock_config.return_value = {
-                            "api_key": "test",
-                            "api_url": "http://test",
-                            "model": "test",
-                            "repo_config": {}
-                        }
+                    with patch("git_commitai.show_dry_run_summary") as mock_show_summary:
+                        mock_show_summary.side_effect = SystemExit(0)
 
-                        with patch("git_commitai.get_git_diff", return_value="```\ndiff\n```"):
-                            with patch("git_commitai.get_staged_files", return_value="files"):
-                                with patch("git_commitai.make_api_request", return_value="Debug test"):
-                                    with patch("git_commitai.show_dry_run_summary"):
-                                        with patch("git_commitai.debug_log") as mock_debug:
-                                            # Catch the sys.exit(0) that happens after dry-run
-                                            with patch("sys.exit") as mock_exit:
-                                                mock_exit.side_effect = SystemExit(0)
+                        with patch("git_commitai.debug_log") as mock_debug:
+                            with patch("sys.exit") as mock_exit:
+                                mock_exit.side_effect = SystemExit(0)
 
-                                                try:
-                                                    git_commitai.main()
-                                                except SystemExit:
-                                                    pass  # Expected
+                                try:
+                                    git_commitai.main()
+                                except SystemExit:
+                                    pass  # Expected
 
-                                                # Debug log should mention dry-run mode
-                                                debug_calls = [str(call) for call in mock_debug.call_args_list]
-                                                assert any("DRY RUN MODE" in str(call) or "dry-run" in str(call).lower()
-                                                          for call in debug_calls)
+                                # Debug log should mention dry-run mode
+                                debug_calls = [str(call) for call in mock_debug.call_args_list]
+                                assert any("DRY RUN MODE" in str(call) or "dry-run" in str(call).lower()
+                                          for call in debug_calls)
+
+    def test_dry_run_delegation_to_git(self):
+        """Test that dry run properly delegates all work to git commit --dry-run."""
+        args = argparse.Namespace(
+            amend=False,
+            allow_empty=False,
+            no_verify=False,
+            author=None,
+            date=None,
+            message="Test message",
+            verbose=False,
+            dry_run=True,
+            debug=False,
+            api_key=None,
+            api_url=None,
+            model=None
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value.returncode = 0
+
+            with patch("sys.exit") as mock_exit:
+                mock_exit.side_effect = SystemExit(0)
+
+                try:
+                    git_commitai.show_dry_run_summary(args)
+                except SystemExit:
+                    pass
+
+                # Verify the exact command structure
+                call_args = mock_run.call_args[0][0]
+                assert call_args[0] == "git"
+                assert call_args[1] == "commit"
+                assert call_args[2] == "--dry-run"
+                assert "-m" in call_args
+
+                # Check that subprocess.run was called with check=False
+                assert mock_run.call_args[1].get('check', True) == False

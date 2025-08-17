@@ -994,57 +994,55 @@ def read_gitmessage_template() -> Optional[str]:
     return None
 
 
-def show_dry_run_summary(commit_message: str, args: argparse.Namespace) -> None:
-    """Show what would be committed in dry-run mode.
+def show_dry_run_summary(args: argparse.Namespace) -> None:
+    """Show what would be committed in dry-run mode by delegating to git.
 
     Args:
-        commit_message: The generated commit message
         args: Parsed command line arguments
     """
-    print("# Dry run mode - no commit will be created")
-    print("#")
+    debug_log("Dry-run mode: delegating to git commit --dry-run")
 
-    # Show branch info
-    branch = get_current_branch()
-    print(f"# On branch {branch}")
+    # Build the git commit command with --dry-run
+    commit_cmd: List[str] = ["git", "commit", "--dry-run"]
 
-    # Show what would be committed
+    # Add any other flags that were passed
     if args.amend:
-        print("# Would amend the previous commit")
-    elif args.allow_empty:
-        print("# Would create an empty commit")
-    else:
-        print("# Changes to be committed:")
-        # Get staged files status
-        status = run_git(["diff", "--cached", "--name-status"])
-        for line in status.split("\n"):
-            if line:
-                print(f"#   {line}")
+        commit_cmd.append("--amend")
 
-    # Show generated commit message
-    print("#")
-    print("# Generated commit message:")
-    print("#")
+    if args.allow_empty:
+        commit_cmd.append("--allow-empty")
 
-    # Format the commit message with comment prefix
-    for line in commit_message.split('\n'):
-        if line.strip():
-            print(f"# {line}")
-        else:
-            print("#")
-
-    # Show additional info about options
-    print("#")
     if args.no_verify:
-        print("# (git hooks would be skipped)")
+        commit_cmd.append("--no-verify")
+
+    if args.verbose:
+        commit_cmd.append("--verbose")
+
     if args.author:
-        print(f"# (author would be: {args.author})")
+        commit_cmd.extend(["--author", args.author])
+
     if args.date:
-        print(f"# (date would be: {args.date})")
+        commit_cmd.extend(["--date", args.date])
 
-    print("#")
-    print("# To actually commit these changes, run without --dry-run")
+    # If user provided a message context, we can add it as a placeholder message
+    # (though it won't be shown in dry-run output)
+    if args.message:
+        commit_cmd.extend(["-m", "placeholder"])
 
+    debug_log(f"Executing: {' '.join(commit_cmd)}")
+
+    try:
+        # Run git commit --dry-run and let it handle all the output
+        result = subprocess.run(commit_cmd, check=False)
+        # Exit with the same code that git returned
+        sys.exit(result.returncode)
+    except subprocess.CalledProcessError as e:
+        debug_log(f"Git commit --dry-run failed with code {e.returncode}")
+        sys.exit(e.returncode)
+    except Exception as e:
+        debug_log(f"Error running git commit --dry-run: {e}")
+        print(f"Error: Failed to run git commit --dry-run: {e}")
+        sys.exit(1)
 
 def make_api_request(config: Dict[str, Any], message: str) -> str:
     """Make API request with retry logic.
@@ -1615,7 +1613,7 @@ Generate the commit message following the rules above:"""
     # If dry-run mode, show what would be committed and exit
     if args.dry_run:
         debug_log("Dry-run mode: showing summary and exiting")
-        show_dry_run_summary(commit_message, args)
+        show_dry_run_summary(args)
         sys.exit(0)
 
     # Get git directory
