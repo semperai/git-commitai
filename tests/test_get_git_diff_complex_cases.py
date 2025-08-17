@@ -20,3 +20,11 @@ class TestGitDiffComplexCases:
             assert "diff --git" in result
             assert "+new file" in result
 
+            # Output should be wrapped in code fences
+            assert result.startswith("```") and result.strip().endswith("```")
+
+            # Ensure commands attempted: parent resolution then cached diff fallback
+            calls = [c.args[0] for c in mock_run.call_args_list]
+            assert any(cmd[:2] == ["rev-parse", "HEAD^"] for cmd in calls)
+            assert any(cmd == ["diff", "--cached"] for cmd in calls)
+
