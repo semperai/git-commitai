@@ -1,6 +1,6 @@
 .\" Manpage for git-commitai
 .\" Contact: https://github.com/semperai/git-commitai
-.TH GIT-COMMITAI 1 "2024" "1.0.0" "Git Commit AI Manual"
+.TH GIT-COMMITAI 1 "2025" "0.1.0" "Git Commit AI Manual"
 
 .SH NAME
 git-commitai \- Generate AI-powered git commit messages
@@ -21,6 +21,7 @@ git-commitai \- Generate AI-powered git commit messages
 [\fB\-\-api\-url\fR \fIurl\fR]
 [\fB\-\-model\fR \fIname\fR]
 [\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-\-version\fR]
 
 .SH DESCRIPTION
 .B git-commitai
@@ -40,7 +41,6 @@ Unlike standard \fBgit commit\fR where this sets the entire message, in \fBgit-c
 .TP
 .BR \-\-debug
 Enable debug mode. Outputs detailed logging information to stderr for troubleshooting.
-Shows git commands, API requests, and decision points. Redirect stderr to a file to capture debug output.
 
 .TP
 .BR \-\-api\-key " " \fIkey\fR
@@ -50,7 +50,6 @@ Overrides the \fBGIT_COMMIT_AI_KEY\fR environment variable.
 .TP
 .BR \-\-api\-url " " \fIurl\fR
 Override the API endpoint URL for this commit.
-Useful for testing different providers or local models.
 Overrides the \fBGIT_COMMIT_AI_URL\fR environment variable.
 
 .TP
@@ -58,17 +57,19 @@ Overrides the \fBGIT_COMMIT_AI_URL\fR environment variable.
 Override the AI model name for this commit.
 Overrides the \fBGIT_COMMIT_AI_MODEL\fR environment variable.
 
-.SS Standard Git Commit Options (Supported)
+.TP
+.BR \-\-version
+Display version information and exit.
+
+.SS Standard Git Commit Options
 .TP
 .BR \-a ", " \-\-all
 Automatically stage all tracked, modified files before committing.
-Equivalent to running \fBgit add -u\fR before the commit.
 Cannot be used with \fB--amend\fR.
 
 .TP
 .BR \-\-amend
 Replace the tip of the current branch by creating a new commit with a new message.
-The previous commit's changes are included.
 
 .TP
 .BR \-n ", " \-\-no\-verify
@@ -77,12 +78,10 @@ Skip pre-commit and commit-msg hooks.
 .TP
 .BR \-v ", " \-\-verbose
 Show the diff of changes in the commit message editor.
-The diff is displayed as comments after the commit message template.
 
 .TP
 .BR \-\-allow\-empty
 Allow creating a commit with no changes.
-Useful for triggering CI/CD pipelines or creating marker commits.
 
 .TP
 .BR \-\-dry\-run
@@ -92,32 +91,11 @@ Don't actually create a commit, just show what would be committed.
 .BR \-\-author " " \fIauthor\fR
 Override the commit author.
 Format: \fI"Name <email@example.com>"\fR
-The standard git formats are accepted, including:
-.RS
-.IP \(bu 2
-\fIName <email@example.com>\fR - Full format
-.IP \(bu 2
-\fI<email@example.com>\fR - Email only (uses configured name)
-.IP \(bu 2
-\fIName\fR - Name only (uses configured email)
-.RE
 
 .TP
 .BR \-\-date " " \fIdate\fR
 Override the author date used in the commit.
-Accepts various date formats:
-.RS
-.IP \(bu 2
-ISO 8601: \fI2024-01-15T14:30:00\fR
-.IP \(bu 2
-RFC 2822: \fIMon, 15 Jan 2024 14:30:00 +0000\fR
-.IP \(bu 2
-Unix timestamp: \fI@1705329000\fR
-.IP \(bu 2
-Relative: \fI2 days ago\fR, \fIlast week\fR
-.IP \(bu 2
-Simple: \fI2024-01-15 14:30:00\fR
-.RE
+Accepts various formats: ISO 8601, RFC 2822, Unix timestamp, relative dates.
 
 .TP
 .BR \-h ", " \-\-help
@@ -126,60 +104,90 @@ Display help information and exit.
 .SH ENVIRONMENT
 .TP
 .B GIT_COMMIT_AI_KEY
-Your API key for the AI service (required).
+Your API key for the AI service (if your provider requires one).
 Can be overridden with \fB--api-key\fR.
 
 .TP
 .B GIT_COMMIT_AI_URL
 The API endpoint URL.
 Default: \fIhttps://openrouter.ai/api/v1/chat/completions\fR
-Can be overridden with \fB--api-url\fR.
 
 .TP
 .B GIT_COMMIT_AI_MODEL
 The AI model to use for generation.
 Default: \fIqwen/qwen3-coder\fR
-Can be overridden with \fB--model\fR.
 
 .TP
 .B GIT_EDITOR, EDITOR
 The editor to use for editing commit messages.
 Falls back to git's configured editor or \fBvi\fR.
 
-.SH TEMPLATE FILES
-Git Commit AI automatically detects and uses \fB.gitmessage\fR template files to understand your project's commit conventions.
-
-.SS Precedence Order
-The tool looks for templates in this order (first found wins):
-
-.IP 1. 4
-\fBRepository template\fR: \fB.gitmessage\fR in your repository root
-.IP 2. 4
-\fBGit config template\fR: Set via \fBgit config commit.template\fR
-.IP 3. 4
-\fBGlobal template\fR: \fB~/.gitmessage\fR in your home directory
-
-.P
-Repository-specific \fB.gitmessage\fR files take precedence over configured templates.
-This ensures teams can enforce project-specific conventions by including a \fB.gitmessage\fR file in their repository,
-regardless of individual developer configurations.
-
-When a template is found, it's used as additional context to help generate messages that follow your project's conventions.
-
-.SS Template Configuration Examples
+.SH EXAMPLES
+.SS Basic Usage
 .nf
-# Create a repository-specific template
+# Generate commit message for staged changes
+$ git add file.py
+$ git commitai
+
+# Provide context for better messages
+$ git commitai -m "Refactored auth system for JWT"
+
+# Auto-stage and commit tracked files
+$ git commitai -a
+
+# Preview without committing
+$ git commitai --dry-run
+.fi
+
+.SS Advanced Usage
+.nf
+# Amend the previous commit with a new AI-generated message
+$ git commitai --amend
+
+# Create an empty commit (e.g., for CI triggers)
+$ git commitai --allow-empty -m "Trigger deployment"
+
+# Skip git hooks
+$ git commitai -n
+
+# Show diff in editor
+$ git commitai -v
+
+# Override author information
+$ git commitai --author "Jane Doe <jane@example.com>"
+
+# Set a specific commit date
+$ git commitai --date "2024-01-01 12:00:00"
+
+# Use relative date
+$ git commitai --date "2 weeks ago"
+
+# Combine author and date overrides
+$ git commitai --author "Bot <bot@ci.com>" --date "@1705329000"
+.fi
+
+.SS Using Different Models
+.nf
+# Use a different model for this commit
+$ git commitai --model "openai/gpt-4o"
+
+# Use a local LLM
+$ git commitai --api-url "http://localhost:11434/v1/chat/completions" \\
+              --model "codellama"
+.fi
+
+.SS Using Templates
+.nf
+# Create a project-specific commit template
 $ cat > .gitmessage << 'EOF'
 # Format: <type>(<scope>): <subject>
 # Types: feat, fix, docs, style, refactor, test, chore
 EOF
 
-# Configure a template via git config
-$ git config --global commit.template ~/.my-template
-$ git config commit.template .github/commit-template
-
-# Create a global fallback template
-$ cp template.txt ~/.gitmessage
+# Git Commit AI will use this template automatically
+$ git add .
+$ git commitai
+# Generated message follows template format
 .fi
 
 .SH CONFIGURATION FILES
@@ -226,183 +234,40 @@ Files: {FILES}
 Generate the commit message:
 .fi
 
-.SH EXAMPLES
-.SS Basic Usage
+.SH TEMPLATE FILES
+Git Commit AI automatically detects and uses \fB.gitmessage\fR template files to understand your project's commit conventions.
+
+.SS Precedence Order
+The tool looks for templates in this order (first found wins):
+
+.IP 1. 4
+\fBRepository template\fR: \fB.gitmessage\fR in your repository root
+.IP 2. 4
+\fBGit config template\fR: Set via \fBgit config commit.template\fR
+.IP 3. 4
+\fBGlobal template\fR: \fB~/.gitmessage\fR in your home directory
+
+.P
+Repository-specific \fB.gitmessage\fR files take precedence over configured templates.
+This ensures teams can enforce project-specific conventions by including a \fB.gitmessage\fR file in their repository.
+
+When a template is found, it's used as additional context to help generate messages that follow your project's conventions.
+
+.SS Template Configuration Examples
 .nf
-# Generate commit message for staged changes
-$ git add file.py
-$ git commitai
-
-# Provide context for better messages
-$ git commitai -m "Refactored auth system for JWT"
-
-# Auto-stage and commit tracked files
-$ git commitai -a
-
-# Preview without committing
-$ git commitai --dry-run
-.fi
-
-.SS Advanced Usage
-.nf
-# Amend the previous commit with a new AI-generated message
-$ git commitai --amend
-
-# Create an empty commit (e.g., for CI triggers)
-$ git commitai --allow-empty -m "Trigger deployment"
-
-# Skip git hooks
-$ git commitai -n
-
-# Show diff in editor
-$ git commitai -v
-
-# Override author information
-$ git commitai --author "Jane Doe <jane@example.com>"
-
-# Set a specific commit date
-$ git commitai --date "2024-01-01 12:00:00"
-
-# Use relative date
-$ git commitai --date "2 weeks ago"
-
-# Combine author and date overrides
-$ git commitai --author "Bot <bot@ci.com>" --date "@1705329000"
-.fi
-
-.SS Dry-Run Mode
-.nf
-# Preview what would be committed without actually committing
-$ git commitai --dry-run
-
-# Combine dry-run with other options
-$ git commitai --dry-run -a -m "Added new feature"
-$ git commitai --dry-run --amend
-$ git commitai --dry-run --allow-empty
-
-# Debug dry-run to see the full process
-$ git commitai --dry-run --debug 2>&1 | tee preview.log
-
-# Example output:
-# Dry run mode - no commit will be created
-#
-# On branch main
-# Changes to be committed:
-#   M src/main.py
-#   A tests/test_main.py
-#
-# Generated commit message:
-#
-# Add unit tests for main module
-#
-# - Created comprehensive test suite
-# - Added edge case handling
-# - Improved code coverage to 95%
-#
-# (git hooks would be skipped)
-# To actually commit these changes, run without --dry-run
-.fi
-
-.SS API Configuration
-.nf
-# Use a different model for this commit
-$ git commitai --model "gpt-4o" --api-key "sk-..."
-
-# Use a local LLM
-$ git commitai --api-url "http://localhost:11434/v1/chat/completions" \\
-              --model "codellama"
-
-# Test with Claude via Anthropic
-$ git commitai --api-url "https://api.anthropic.com/v1/messages" \\
-              --model "claude-3-opus" \\
-              --api-key "sk-ant-..."
-.fi
-
-.SS Debugging
-.nf
-# Enable debug mode (outputs to stderr)
-$ git commitai --debug
-
-# Capture debug output to a file
-$ git commitai --debug 2> debug.log
-
-# View debug output on screen and save to file
-$ git commitai --debug 2>&1 | tee debug.log
-
-# Debug with other options
-$ git commitai --debug -a -v --author "Test <test@example.com>" 2> debug.log
-.fi
-
-.SS Using Templates
-.nf
-# Create a project-specific commit template
+# Create a repository-specific template
 $ cat > .gitmessage << 'EOF'
 # Format: <type>(<scope>): <subject>
 # Types: feat, fix, docs, style, refactor, test, chore
 EOF
 
-# Git Commit AI will use this template automatically
-$ git add .
-$ git commitai
-# Generated message follows template format
+# Configure a template via git config
+$ git config --global commit.template ~/.my-template
+$ git config commit.template .github/commit-template
 
-# Note: The repository .gitmessage overrides any configured
-# templates or global ~/.gitmessage file
+# Create a global fallback template
+$ cp template.txt ~/.gitmessage
 .fi
-
-.SS Custom .gitcommitai Configuration
-.nf
-# Create a .gitcommitai file with custom prompt
-$ cat > .gitcommitai << 'EOF'
-model: gpt-4
-
-You are a commit message generator for our project.
-Use conventional commits format.
-
-{CONTEXT}
-
-Changes:
-{DIFF}
-
-Files:
-{FILES}
-
-Generate the commit message:
-EOF
-
-# Use with context
-$ git commitai -m "Performance improvements"
-# The AI will use your custom prompt template
-.fi
-
-.SH DEBUGGING
-When the \fB--debug\fR flag is enabled, detailed logging information is output to stderr. This includes:
-
-.IP \(bu 2
-All git commands executed
-.IP \(bu 2
-API request and response details
-.IP \(bu 2
-File processing information
-.IP \(bu 2
-Configuration and environment details
-.IP \(bu 2
-Template file detection and loading (shows which template was chosen and why)
-.IP \(bu 2
-Error messages and stack traces
-
-To capture debug output, redirect stderr to a file:
-.nf
-$ git commitai --debug 2> debug.log
-.fi
-
-Or view it on screen while saving to a file:
-.nf
-$ git commitai --debug 2>&1 | tee debug.log
-.fi
-
-The debug output for template detection will show the precedence order and which template was selected.
-When reporting bugs, include relevant portions of the debug output.
 
 .SH FILES
 .TP
@@ -414,10 +279,6 @@ Repository \fB.gitmessage\fR files take precedence over all other templates.
 .B .gitcommitai
 Project-specific AI prompt configuration file.
 Can include custom prompt templates with placeholders for context, diff, and files.
-
-.TP
-.B .git/COMMIT_EDITMSG
-Temporary file containing the commit message being edited.
 
 .SH EXIT STATUS
 .TP
@@ -431,42 +292,6 @@ General error or commit aborted
 .TP
 .B 128
 Not in a git repository
-
-.SH SUPPORTED PROVIDERS
-Git Commit AI works with any OpenAI-compatible API endpoint:
-
-.IP \(bu 2
-\fBOpenRouter\fR (recommended) - Access to multiple models
-.IP \(bu 2
-\fBLocal LLMs\fR - Ollama, LM Studio, etc.
-.IP \(bu 2
-\fBOpenAI\fR - GPT-4, GPT-3.5
-.IP \(bu 2
-\fBAnthropic\fR - Claude models
-.IP \(bu 2
-Any OpenAI-compatible API
-
-.SH LIMITATIONS
-The following standard \fBgit commit\fR options are not yet supported:
-
-.IP \(bu 2
-\fB--interactive\fR, \fB--patch\fR - Interactive staging
-.IP \(bu 2
-\fB-s\fR, \fB--signoff\fR - Signed-off-by trailer
-.IP \(bu 2
-\fB-c\fR, \fB-C\fR - Reuse commit messages
-.IP \(bu 2
-\fB--squash\fR, \fB--fixup\fR - Autosquash commits
-.IP \(bu 2
-\fB-F\fR, \fB--file\fR - Read message from file
-.IP \(bu 2
-\fB--reset-author\fR - Reset author information (use \fB--author\fR instead)
-.IP \(bu 2
-\fB--cleanup\fR - Commit message cleanup mode
-.IP \(bu 2
-\fB-S\fR, \fB--gpg-sign\fR - GPG signing
-.IP \(bu 2
-Path specifications after \fB--\fR
 
 .SH SEE ALSO
 .BR git (1),
