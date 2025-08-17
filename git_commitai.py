@@ -11,26 +11,34 @@ import re
 from datetime import datetime
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+from typing import Dict, List, Optional, Tuple, Any, Union, NoReturn
 
 
 # Global debug flag
-DEBUG = False
+DEBUG: bool = False
 
 # Retry configuration constants
-MAX_RETRIES = 3
-RETRY_DELAY = 2  # seconds between retries
-RETRY_BACKOFF = 1.5  # backoff multiplier for each retry
+MAX_RETRIES: int = 3
+RETRY_DELAY: int = 2  # seconds between retries
+RETRY_BACKOFF: float = 1.5  # backoff multiplier for each retry
 
-REQ_TIMEOUT = 300  # 5 minutes timeout for requests
+REQ_TIMEOUT: int = 300  # 5 minutes timeout for requests
 
 
-def redact_secrets(message):
-    """Redact sensitive information from debug messages."""
+def redact_secrets(message: Union[str, Any]) -> str:
+    """Redact sensitive information from debug messages.
+
+    Args:
+        message: Message to redact (will be converted to string if not already)
+
+    Returns:
+        String with sensitive information redacted
+    """
     if not isinstance(message, str):
         message = str(message)
 
     # Patterns for common sensitive data
-    patterns = [
+    patterns: List[Tuple[str, Any]] = [
         # API keys (various formats)
         (r'\b[A-Za-z0-9]{32,}\b', lambda m: m.group()[:4] + '...' + m.group()[-4:] if len(m.group()) > 8 else 'REDACTED'),
 
@@ -65,7 +73,7 @@ def redact_secrets(message):
          '-----BEGIN PRIVATE KEY-----\n[REDACTED]\n-----END PRIVATE KEY-----'),
     ]
 
-    redacted = message
+    redacted: str = message
     for pattern, replacement in patterns:
         if callable(replacement):
             redacted = re.sub(pattern, replacement, redacted, flags=re.IGNORECASE)
@@ -75,19 +83,27 @@ def redact_secrets(message):
     return redacted
 
 
-def debug_log(message):
-    """Log debug messages if debug mode is enabled, with secret redaction."""
+def debug_log(message: str) -> None:
+    """Log debug messages if debug mode is enabled, with secret redaction.
+
+    Args:
+        message: Debug message to log
+    """
     if DEBUG:
         # Redact sensitive information before logging
-        safe_message = redact_secrets(message)
+        safe_message: str = redact_secrets(message)
         print(f"DEBUG: {safe_message}", file=sys.stderr)
 
 
-def show_man_page():
-    """Try to show the man page, fall back to help text if not available."""
+def show_man_page() -> bool:
+    """Try to show the man page, fall back to help text if not available.
+
+    Returns:
+        True if man page was shown, False otherwise
+    """
     try:
         # Try to use man command to show the man page
-        result = subprocess.run(
+        result: subprocess.CompletedProcess = subprocess.run(
             ["man", "git-commitai"],
             check=False
         )
@@ -100,15 +116,19 @@ def show_man_page():
     return False
 
 
-def get_git_root():
-    """Get the root directory of the git repository."""
+def get_git_root() -> str:
+    """Get the root directory of the git repository.
+
+    Returns:
+        Path to git repository root
+    """
     try:
         return run_git(["rev-parse", "--show-toplevel"]).strip()
     except (subprocess.CalledProcessError, Exception):
         return os.getcwd()
 
 
-def load_gitcommitai_config():
+def load_gitcommitai_config() -> Dict[str, Any]:
     """Load configuration from .gitcommitai file in the repository root.
 
     The .gitcommitai file should contain a prompt template with placeholders:
@@ -124,14 +144,17 @@ def load_gitcommitai_config():
     - {DATE_NOTE} - Note about custom date if --date is used
 
     Also supports optional model configuration.
+
+    Returns:
+        Dictionary containing configuration (may be empty)
     """
     debug_log("Looking for .gitcommitai configuration file")
 
-    config = {}
+    config: Dict[str, Any] = {}
 
     try:
-        git_root = get_git_root()
-        config_path = os.path.join(git_root, ".gitcommitai")
+        git_root: str = get_git_root()
+        config_path: str = os.path.join(git_root, ".gitcommitai")
 
         if not os.path.exists(config_path):
             debug_log("No .gitcommitai file found")
@@ -140,13 +163,13 @@ def load_gitcommitai_config():
         debug_log(f"Found .gitcommitai at: {config_path}")
 
         with open(config_path, 'r') as f:
-            content = f.read()
+            content: str = f.read()
 
         # Check if it's JSON format (for backward compatibility)
-        content_stripped = content.strip()
+        content_stripped: str = content.strip()
         if content_stripped.startswith('{'):
             try:
-                json_config = json.loads(content)
+                json_config: Dict[str, Any] = json.loads(content)
                 # Extract only model and prompt from JSON
                 if 'model' in json_config:
                     config['model'] = json_config['model']
@@ -158,20 +181,20 @@ def load_gitcommitai_config():
                 debug_log("Failed to parse as JSON, treating as template")
 
         # Check for model specification at the top of the file
-        lines = content.split('\n')
-        template_lines = []
+        lines: List[str] = content.split('\n')
+        template_lines: List[str] = []
 
         for line in lines:
             # Check for model specification (e.g., "model: gpt-4" or "model=gpt-4")
             if line.strip().startswith('model:') or line.strip().startswith('model='):
-                model_value = line.split(':', 1)[1] if ':' in line else line.split('=', 1)[1]
+                model_value: str = line.split(':', 1)[1] if ':' in line else line.split('=', 1)[1]
                 config['model'] = model_value.strip()
                 debug_log(f"Found model specification: {config['model']}")
             else:
                 template_lines.append(line)
 
         # The rest is the prompt template
-        prompt_template = '\n'.join(template_lines).strip()
+        prompt_template: str = '\n'.join(template_lines).strip()
         if prompt_template:
             config['prompt_template'] = prompt_template
             debug_log(f"Loaded prompt template ({len(prompt_template)} characters)")
@@ -182,15 +205,22 @@ def load_gitcommitai_config():
     return config
 
 
-def get_env_config(args):
-    """Get configuration from environment variables, .gitcommitai file, and command line args."""
+def get_env_config(args: argparse.Namespace) -> Dict[str, Any]:
+    """Get configuration from environment variables, .gitcommitai file, and command line args.
+
+    Args:
+        args: Parsed command line arguments
+
+    Returns:
+        Configuration dictionary with API settings and repo config
+    """
     debug_log("Loading environment configuration")
 
     # Load from .gitcommitai file first
-    repo_config = load_gitcommitai_config()
+    repo_config: Dict[str, Any] = load_gitcommitai_config()
 
     # Build final config with precedence: CLI args > env vars > .gitcommitai > defaults
-    config = {
+    config: Dict[str, Any] = {
         "api_key": (
             args.api_key or
             os.environ.get("GIT_COMMIT_AI_KEY")
@@ -230,12 +260,23 @@ def get_env_config(args):
     return config
 
 
-def run_git(args, check=True):
-    """Run git with a list of args safely (no shell). Returns stdout text."""
+def run_git(args: List[str], check: bool = True) -> str:
+    """Run git with a list of args safely (no shell). Returns stdout text.
+
+    Args:
+        args: List of git command arguments
+        check: Whether to raise exception on non-zero exit code
+
+    Returns:
+        Standard output from git command
+
+    Raises:
+        subprocess.CalledProcessError: If check=True and command fails
+    """
     debug_log(f"Running git command: git {' '.join(args)}")
 
     try:
-        result = subprocess.run(
+        result: subprocess.CompletedProcess[str] = subprocess.run(
             ["git"] + args,
             capture_output=True,
             text=True,
@@ -250,18 +291,35 @@ def run_git(args, check=True):
         return e.stdout if e.stdout else ""
 
 
-def build_ai_prompt(repo_config, args, allow_empty=False, author=None, date=None):
-    """Build the AI prompt, incorporating repository-specific customization."""
+def build_ai_prompt(
+    repo_config: Dict[str, Any],
+    args: argparse.Namespace,
+    allow_empty: bool = False,
+    author: Optional[str] = None,
+    date: Optional[str] = None
+) -> str:
+    """Build the AI prompt, incorporating repository-specific customization.
+
+    Args:
+        repo_config: Repository-specific configuration
+        args: Parsed command line arguments
+        allow_empty: Whether this is an empty commit
+        author: Custom author if specified
+        date: Custom date if specified
+
+    Returns:
+        Complete prompt string for AI
+    """
 
     # Check if repository has a custom prompt template
     if repo_config.get('prompt_template'):
         debug_log("Using custom prompt template from .gitcommitai")
 
         # Read .gitmessage if it exists
-        gitmessage_content = read_gitmessage_template() or ""
+        gitmessage_content: str = read_gitmessage_template() or ""
 
         # Prepare replacement values
-        replacements = {
+        replacements: Dict[str, str] = {
             'CONTEXT': f"Additional context from user: {args.message}" if args.message else "",
             'GITMESSAGE': gitmessage_content,
             'AMEND_NOTE': "Note: You are amending the previous commit." if args.amend else "",
@@ -273,13 +331,13 @@ def build_ai_prompt(repo_config, args, allow_empty=False, author=None, date=None
         }
 
         # Start with the template
-        base_prompt = repo_config['prompt_template']
+        base_prompt: str = repo_config['prompt_template']
 
         # Replace placeholders - but don't add them yet for DIFF and FILES
         # We'll add those at the end of the function
         for key, value in replacements.items():
             if key not in ['DIFF', 'FILES']:
-                placeholder = '{' + key + '}'
+                placeholder: str = '{' + key + '}'
                 if placeholder in base_prompt:
                     base_prompt = base_prompt.replace(placeholder, value)
 
@@ -351,7 +409,7 @@ Remember:
 
     # Add .gitmessage template context if available and not already included via template
     if not repo_config.get('prompt_template'):
-        gitmessage_template = read_gitmessage_template()
+        gitmessage_template: Optional[str] = read_gitmessage_template()
         if gitmessage_template:
             base_prompt += f"""
 
@@ -385,8 +443,12 @@ to understand the project's commit message conventions, but still follow the Git
     return base_prompt
 
 
-def stage_all_tracked_files():
-    """Stage all tracked, modified files (equivalent to git add -u)."""
+def stage_all_tracked_files() -> bool:
+    """Stage all tracked, modified files (equivalent to git add -u).
+
+    Returns:
+        True if successful, False otherwise
+    """
     debug_log("Staging all tracked files with 'git add -u'")
 
     try:
@@ -401,15 +463,24 @@ def stage_all_tracked_files():
         return False
 
 
-def check_staged_changes(amend=False, auto_stage=False, allow_empty=False):
-    """Check if there are staged changes and provide git-like output if not."""
+def check_staged_changes(amend: bool = False, auto_stage: bool = False, allow_empty: bool = False) -> bool:
+    """Check if there are staged changes and provide git-like output if not.
+
+    Args:
+        amend: Whether we're amending a commit
+        auto_stage: Whether to auto-stage tracked files
+        allow_empty: Whether to allow empty commits
+
+    Returns:
+        True if we can proceed with commit, False otherwise
+    """
     debug_log(f"Checking staged changes - amend: {amend}, auto_stage: {auto_stage}, allow_empty: {allow_empty}")
 
     if auto_stage and not amend:
         # First, check if there are any changes to stage
         try:
             # Check for modified tracked files
-            result = subprocess.run(["git", "diff", "--quiet"], capture_output=True)
+            result: subprocess.CompletedProcess = subprocess.run(["git", "diff", "--quiet"], capture_output=True)
             if result.returncode != 0:
                 debug_log("Found unstaged changes, auto-staging them")
                 # There are unstaged changes in tracked files, stage them
@@ -453,13 +524,13 @@ def check_staged_changes(amend=False, auto_stage=False, allow_empty=False):
         return False
 
 
-def show_git_status():
+def show_git_status() -> None:
     """Show git status output similar to what 'git commit' shows."""
     debug_log("Showing git status")
 
     # Get branch name
     try:
-        branch = run_git(["branch", "--show-current"]).strip()
+        branch: str = run_git(["branch", "--show-current"]).strip()
         if not branch:  # detached HEAD state
             branch = run_git(["rev-parse", "--short", "HEAD"]).strip()
             print(f"HEAD detached at {branch}")
@@ -476,15 +547,15 @@ def show_git_status():
 
     # Get untracked and modified files - don't strip to preserve all lines
     try:
-        status_output = run_git(["status", "--porcelain"])
+        status_output: str = run_git(["status", "--porcelain"])
 
-        untracked = []
-        modified = []
-        deleted = []
+        untracked: List[str] = []
+        modified: List[str] = []
+        deleted: List[str] = []
 
         if status_output:
             # Split on newlines but preserve empty strings to handle all lines
-            lines = (
+            lines: List[str] = (
                 status_output.rstrip("\n").split("\n")
                 if status_output.rstrip("\n")
                 else []
@@ -496,9 +567,9 @@ def show_git_status():
                 # Git status --porcelain format: XY filename
                 # X = staged status, Y = working tree status
                 if len(line) >= 3:
-                    staged_status = line[0] if len(line) > 0 else " "
-                    working_status = line[1] if len(line) > 1 else " "
-                    filename = line[3:] if len(line) > 3 else ""
+                    staged_status: str = line[0] if len(line) > 0 else " "
+                    working_status: str = line[1] if len(line) > 1 else " "
+                    filename: str = line[3:] if len(line) > 3 else ""
 
                     if not filename:
                         continue
@@ -511,7 +582,7 @@ def show_git_status():
                         deleted.append(filename)
 
         # Show unstaged changes
-        changes_shown = False
+        changes_shown: bool = False
         if modified or deleted:
             print("Changes not staged for commit:")
             print('  (use "git add <file>..." to update what will be committed)')
@@ -553,11 +624,19 @@ def show_git_status():
         print("No changes staged for commit")
 
 
-def get_binary_file_info(filename, amend=False):
-    """Get information about a binary file."""
+def get_binary_file_info(filename: str, amend: bool = False) -> str:
+    """Get information about a binary file.
+
+    Args:
+        filename: Path to the binary file
+        amend: Whether we're amending a commit
+
+    Returns:
+        Formatted information about the binary file
+    """
     debug_log(f"Getting binary file info for: {filename}")
 
-    info_parts = []
+    info_parts: List[str] = []
 
     # Get file extension
     _, ext = os.path.splitext(filename)
@@ -566,6 +645,7 @@ def get_binary_file_info(filename, amend=False):
 
     # Try to get file size from git
     try:
+        size_output: str
         if amend:
             # Try to get size from index first, then HEAD
             size_output = run_git(["cat-file", "-s", f":{filename}"], check=False)
@@ -575,7 +655,8 @@ def get_binary_file_info(filename, amend=False):
             size_output = run_git(["cat-file", "-s", f":{filename}"], check=False)
 
         if size_output and "fatal:" not in size_output:
-            size_bytes = int(size_output.strip())
+            size_bytes: int = int(size_output.strip())
+            size_str: str
             # Format size nicely
             if size_bytes < 1024:
                 size_str = f"{size_bytes} bytes"
@@ -588,7 +669,7 @@ def get_binary_file_info(filename, amend=False):
         pass
 
     # Common binary file type descriptions
-    binary_descriptions = {
+    binary_descriptions: Dict[str, str] = {
         ".jpg": "JPEG image",
         ".jpeg": "JPEG image",
         ".png": "PNG image",
@@ -638,21 +719,30 @@ def get_binary_file_info(filename, amend=False):
     )
 
 
-def get_staged_files(amend=False, allow_empty=False):
-    """Get list of staged files with their staged contents."""
+def get_staged_files(amend: bool = False, allow_empty: bool = False) -> str:
+    """Get list of staged files with their staged contents.
+
+    Args:
+        amend: Whether we're amending a commit
+        allow_empty: Whether this is an empty commit
+
+    Returns:
+        Formatted string with file contents
+    """
     debug_log(f"Getting staged files - amend: {amend}, allow_empty: {allow_empty}")
 
+    files_output: str
     if amend:
         # For --amend, get files from the last commit plus any newly staged files
         # First, get files from the last commit
-        last_commit_files = run_git(
+        last_commit_files: str = run_git(
             ["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"]
         ).strip()
         # Then, get any newly staged files
-        staged_files = run_git(["diff", "--cached", "--name-only"]).strip()
+        staged_files: str = run_git(["diff", "--cached", "--name-only"]).strip()
 
         # Combine and deduplicate
-        all_filenames = set()
+        all_filenames: set[str] = set()
         if last_commit_files:
             all_filenames.update(last_commit_files.split("\n"))
         if staged_files:
@@ -669,11 +759,12 @@ def get_staged_files(amend=False, allow_empty=False):
             return "# No files changed (empty commit)"
         return ""
 
-    all_files = []
+    all_files: List[str] = []
     for filename in files_output.split("\n"):
         if filename:
             try:
                 # Check if file is binary
+                is_binary_check: str
                 if amend:
                     # For amend, check if file exists in index first, then HEAD
                     is_binary_check = run_git(
@@ -691,12 +782,13 @@ def get_staged_files(amend=False, allow_empty=False):
                 # Git shows '-' for binary files in numstat
                 if is_binary_check and is_binary_check.strip().startswith("-"):
                     # It's a binary file
-                    file_info = get_binary_file_info(filename, amend)
+                    file_info: str = get_binary_file_info(filename, amend)
                     all_files.append(
                         f"{filename} (binary file)\n```\n{file_info}\n```\n"
                     )
                 else:
                     # It's a text file, get its content
+                    staged_content: str
                     if amend:
                         # Try staged version first, then fall back to HEAD version
                         staged_content = run_git(
@@ -729,19 +821,28 @@ def get_staged_files(amend=False, allow_empty=False):
     return "\n".join(all_files) if all_files else "# No files changed (empty commit)"
 
 
-def get_git_diff(amend=False, allow_empty=False):
-    """Get the git diff of staged changes, with binary file handling."""
+def get_git_diff(amend: bool = False, allow_empty: bool = False) -> str:
+    """Get the git diff of staged changes, with binary file handling.
+
+    Args:
+        amend: Whether we're amending a commit
+        allow_empty: Whether this is an empty commit
+
+    Returns:
+        Formatted diff string
+    """
     debug_log(f"Getting git diff - amend: {amend}, allow_empty: {allow_empty}")
 
+    diff: str
     if amend:
         # For --amend, show the diff of the last commit plus any new staged changes
         # Get the parent of HEAD (or use empty tree if it's the first commit)
         try:
-            parent = run_git(["rev-parse", "HEAD^"]).strip()
+            parent: str = run_git(["rev-parse", "HEAD^"]).strip()
             # Diff from parent to current index (staged changes + last commit)
             diff = run_git(["diff", f"{parent}..HEAD"]).strip()
             # Also include any newly staged changes
-            staged_diff = run_git(["diff", "--cached"]).strip()
+            staged_diff: str = run_git(["diff", "--cached"]).strip()
             if staged_diff:
                 diff = (
                     f"{diff}\n\n# Additional staged changes:\n{staged_diff}"
@@ -760,30 +861,30 @@ def get_git_diff(amend=False, allow_empty=False):
         return "```\n# No changes (empty commit)\n```"
 
     # Process the diff to add information about binary files
-    diff_lines = diff.split("\n") if diff else []
-    processed_lines = []
-    i = 0
+    diff_lines: List[str] = diff.split("\n") if diff else []
+    processed_lines: List[str] = []
+    i: int = 0
 
     while i < len(diff_lines):
-        line = diff_lines[i]
+        line: str = diff_lines[i]
 
         # Check for binary file indicators
         if line.startswith("Binary files"):
             # Extract filename from the binary files line
             # Format: "Binary files a/path/file and b/path/file differ"
-            parts = line.split(" ")
+            parts: List[str] = line.split(" ")
             if len(parts) >= 4:
-                file_a = parts[2].lstrip("a/")
-                file_b = parts[4].lstrip("b/")
+                file_a: str = parts[2].lstrip("a/")
+                file_b: str = parts[4].lstrip("b/")
                 # Use the 'b/' version as it's the new version
-                filename = file_b if file_b != "/dev/null" else file_a
+                filename: str = file_b if file_b != "/dev/null" else file_a
 
                 # Add enhanced binary file information
                 processed_lines.append(line)
                 processed_lines.append(f"# Binary file: {filename}")
 
                 # Try to get more info about the binary file
-                binary_info = get_binary_file_info(filename, amend)
+                binary_info: str = get_binary_file_info(filename, amend)
                 for info_line in binary_info.split("\n"):
                     processed_lines.append(f"# {info_line}")
         else:
@@ -791,14 +892,18 @@ def get_git_diff(amend=False, allow_empty=False):
 
         i += 1
 
-    processed_diff = "\n".join(processed_lines) if processed_lines else diff
+    processed_diff: str = "\n".join(processed_lines) if processed_lines else diff
     return f"```\n{processed_diff}\n```"
 
 
-def get_git_editor():
-    """Get the configured git editor."""
+def get_git_editor() -> str:
+    """Get the configured git editor.
+
+    Returns:
+        Editor command string
+    """
     # Check environment variables first
-    editor = os.environ.get("GIT_EDITOR")
+    editor: Optional[str] = os.environ.get("GIT_EDITOR")
     if editor:
         return editor
 
@@ -818,10 +923,14 @@ def get_git_editor():
     return "vi"
 
 
-def get_current_branch():
-    """Get current git branch name."""
+def get_current_branch() -> str:
+    """Get current git branch name.
+
+    Returns:
+        Branch name or commit hash if detached
+    """
     try:
-        branch = run_git(["branch", "--show-current"]).strip()
+        branch: str = run_git(["branch", "--show-current"]).strip()
         if not branch:  # detached HEAD state
             return run_git(["rev-parse", "--short", "HEAD"]).strip()
         return branch
@@ -829,25 +938,33 @@ def get_current_branch():
         return "unknown"
 
 
-def get_git_dir():
-    """Get the .git directory path."""
+def get_git_dir() -> str:
+    """Get the .git directory path.
+
+    Returns:
+        Path to .git directory
+    """
     # This should never fail since we check in main(), but just in case
     return run_git(["rev-parse", "--git-dir"]).strip()
 
 
-def read_gitmessage_template():
-    """Read .gitmessage template file if it exists."""
+def read_gitmessage_template() -> Optional[str]:
+    """Read .gitmessage template file if it exists.
+
+    Returns:
+        Template content or None if not found
+    """
     debug_log("Checking for .gitmessage template file")
 
     # 1. Check for .gitmessage in repository root (HIGHEST PRIORITY)
     try:
-        git_root = get_git_root()
-        repo_gitmessage = os.path.join(git_root, ".gitmessage")
+        git_root: str = get_git_root()
+        repo_gitmessage: str = os.path.join(git_root, ".gitmessage")
         if os.path.isfile(repo_gitmessage):
-            debug_log("Found repository .gitmessage: {repo_gitmessage}")
+            debug_log(f"Found repository .gitmessage: {repo_gitmessage}")
             try:
                 with open(repo_gitmessage, 'r') as f:
-                    content = f.read()
+                    content: str = f.read()
                 debug_log("Successfully read repository .gitmessage template")
                 debug_log(f"Template content length: {len(content)} characters")
                 return content
@@ -858,7 +975,7 @@ def read_gitmessage_template():
 
     # 2. Check git config for commit.template (SECOND PRIORITY)
     try:
-        configured_template = run_git(["config", "--get", "commit.template"], check=False).strip()
+        configured_template: str = run_git(["config", "--get", "commit.template"], check=False).strip()
         if configured_template:
             # Expand ~ to home directory if present
             if configured_template.startswith("~"):
@@ -886,7 +1003,7 @@ def read_gitmessage_template():
 
     # 3. Check for global .gitmessage in home directory (LOWEST PRIORITY)
     try:
-        home_gitmessage = os.path.expanduser("~/.gitmessage")
+        home_gitmessage: str = os.path.expanduser("~/.gitmessage")
         if os.path.isfile(home_gitmessage):
             debug_log(f"Found home directory .gitmessage: {home_gitmessage}")
             try:
@@ -904,25 +1021,36 @@ def read_gitmessage_template():
     return None
 
 
-def make_api_request(config, message):
-    """Make API request with retry logic."""
+def make_api_request(config: Dict[str, Any], message: str) -> str:
+    """Make API request with retry logic.
+
+    Args:
+        config: Configuration dictionary with API settings
+        message: Prompt message to send to API
+
+    Returns:
+        Generated commit message from AI
+
+    Raises:
+        SystemExit: On API failure after retries
+    """
     debug_log(f"Making API request to {config['api_url']} with model {config['model']}")
     debug_log(f"Prompt length: {len(message)} characters")
 
-    delay = RETRY_DELAY
-    last_error = None
+    delay: float = RETRY_DELAY
+    last_error: Optional[Exception] = None
 
     for attempt in range(1, MAX_RETRIES + 1):
         debug_log(f"API request attempt {attempt}/{MAX_RETRIES}")
 
         try:
-            payload = {
+            payload: Dict[str, Any] = {
                 "model": config["model"],
                 "messages": [{"role": "user", "content": message}],
             }
 
             # Create request with headers (will be redacted in debug output)
-            headers = {
+            headers: Dict[str, str] = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {config['api_key']}",
             }
@@ -930,21 +1058,21 @@ def make_api_request(config, message):
             # Log headers with redacted auth
             debug_log(f"Request headers: {headers}")
 
-            req = Request(
+            req: Request = Request(
                 config["api_url"],
                 data=json.dumps(payload).encode("utf-8"),
                 headers=headers,
             )
 
             with urlopen(req, timeout=REQ_TIMEOUT) as response:
-                data = json.loads(response.read().decode("utf-8"))
-                result = data["choices"][0]["message"]["content"]
+                data: Dict[str, Any] = json.loads(response.read().decode("utf-8"))
+                result: str = data["choices"][0]["message"]["content"]
                 debug_log(f"API request successful on attempt {attempt}, response length: {len(result)} characters")
                 return result
 
         except (URLError, HTTPError) as e:
             last_error = e
-            error_msg = str(e)
+            error_msg: str = str(e)
 
             # Check if it's an HTTP error with a status code
             if isinstance(e, HTTPError):
@@ -978,28 +1106,43 @@ def make_api_request(config, message):
 
 
 def create_commit_message_file(
-    git_dir,
-    commit_message,
-    amend=False,
-    auto_staged=False,
-    no_verify=False,
-    verbose=False,
-    allow_empty=False,
-    author=None,
-    date=None,
-):
-    """Create the commit message file with git template."""
+    git_dir: str,
+    commit_message: str,
+    amend: bool = False,
+    auto_staged: bool = False,
+    no_verify: bool = False,
+    verbose: bool = False,
+    allow_empty: bool = False,
+    author: Optional[str] = None,
+    date: Optional[str] = None,
+) -> str:
+    """Create the commit message file with git template.
+
+    Args:
+        git_dir: Path to .git directory
+        commit_message: Generated commit message
+        amend: Whether we're amending
+        auto_staged: Whether files were auto-staged
+        no_verify: Whether hooks will be skipped
+        verbose: Whether to include diff
+        allow_empty: Whether this is an empty commit
+        author: Custom author if specified
+        date: Custom date if specified
+
+    Returns:
+        Path to created commit message file
+    """
     debug_log(f"Creating commit message file in {git_dir}")
 
-    commit_file = os.path.join(git_dir, "COMMIT_EDITMSG")
+    commit_file: str = os.path.join(git_dir, "COMMIT_EDITMSG")
 
     # Split the commit message to separate actual message from any AI-generated warnings
     # Warnings will start with "# ⚠️  WARNING:" and should appear first in comments
-    message_lines = commit_message.split('\n')
-    actual_message = []
-    warning_comments = []
+    message_lines: List[str] = commit_message.split('\n')
+    actual_message: List[str] = []
+    warning_comments: List[str] = []
 
-    in_warnings = False
+    in_warnings: bool = False
     for line in message_lines:
         # Check if this line is part of a warning
         if (line.startswith('# ⚠️  WARNING:') or
@@ -1020,7 +1163,7 @@ def create_commit_message_file(
             actual_message.append(line)
 
     # Reconstruct the actual commit message without warnings
-    clean_message = '\n'.join(actual_message).rstrip()
+    clean_message: str = '\n'.join(actual_message).rstrip()
 
     with open(commit_file, "w") as f:
         # Write the actual commit message
@@ -1071,7 +1214,7 @@ def create_commit_message_file(
             f.write("# Changes to be committed (including previous commit):\n")
             # Get files from last commit and staged
             try:
-                last_commit_files = run_git(
+                last_commit_files: str = run_git(
                     ["diff-tree", "--no-commit-id", "--name-status", "-r", "HEAD"]
                 )
                 if last_commit_files:
@@ -1082,7 +1225,7 @@ def create_commit_message_file(
                 pass
 
             # Also show newly staged files if any
-            staged_status = run_git(["diff", "--cached", "--name-status"])
+            staged_status: str = run_git(["diff", "--cached", "--name-status"])
             if staged_status.strip():
                 f.write("# \n")
                 f.write("# Additional staged changes:\n")
@@ -1095,7 +1238,7 @@ def create_commit_message_file(
         else:
             f.write("# Changes to be committed:\n")
             # Get staged files status
-            status = run_git(["diff", "--cached", "--name-status"])
+            status: str = run_git(["diff", "--cached", "--name-status"])
             for line in status.split("\n"):
                 if line:
                     f.write(f"# {line}\n")
@@ -1111,13 +1254,14 @@ def create_commit_message_file(
             f.write("#\n")
 
             # Get the appropriate diff
+            diff_output: str
             if amend:
                 # For amend, show diff from parent to current state
                 try:
-                    parent = run_git(["rev-parse", "HEAD^"]).strip()
+                    parent: str = run_git(["rev-parse", "HEAD^"]).strip()
                     diff_output = run_git(["diff", f"{parent}..HEAD"])
                     # Also include any newly staged changes
-                    staged_diff = run_git(["diff", "--cached"])
+                    staged_diff: str = run_git(["diff", "--cached"])
                     if staged_diff.strip():
                         diff_output += "\n# Additional staged changes:\n" + staged_diff
                 except:
@@ -1138,13 +1282,21 @@ def create_commit_message_file(
     return commit_file
 
 
-def open_editor(filepath, editor):
-    """Open file in editor and wait for it to close."""
+def open_editor(filepath: str, editor: str) -> None:
+    """Open file in editor and wait for it to close.
+
+    Args:
+        filepath: Path to file to edit
+        editor: Editor command
+
+    Raises:
+        SystemExit: If editor fails to open
+    """
     debug_log(f"Opening editor: {editor} {filepath}")
 
     try:
         # Use POSIX splitting except on Windows for better compatibility
-        cmd = shlex.split(editor, posix=(os.name != "nt")) + [filepath]
+        cmd: List[str] = shlex.split(editor, posix=(os.name != "nt")) + [filepath]
 
         subprocess.run(cmd)
         debug_log("Editor closed")
@@ -1154,11 +1306,18 @@ def open_editor(filepath, editor):
         sys.exit(1)
 
 
-def strip_comments_and_save(filepath):
-    """Strip comment lines from commit message file and save it back."""
+def strip_comments_and_save(filepath: str) -> bool:
+    """Strip comment lines from commit message file and save it back.
+
+    Args:
+        filepath: Path to commit message file
+
+    Returns:
+        True if successful, False otherwise
+    """
     debug_log(f"Stripping comments from file: {filepath}")
 
-    clean_lines = []
+    clean_lines: List[str] = []
     try:
         with open(filepath, "r") as f:
             for line in f:
@@ -1173,7 +1332,7 @@ def strip_comments_and_save(filepath):
         # Write back the cleaned message
         with open(filepath, "w") as f:
             # Remove trailing whitespace/newlines but keep internal structure
-            content = "".join(clean_lines).rstrip()
+            content: str = "".join(clean_lines).rstrip()
             if content:
                 f.write(content)
                 f.write("\n")  # Ensure file ends with newline
@@ -1188,8 +1347,15 @@ def strip_comments_and_save(filepath):
         return False
 
 
-def is_commit_message_empty(filepath):
-    """Check if commit message is empty (ignoring comments)."""
+def is_commit_message_empty(filepath: str) -> bool:
+    """Check if commit message is empty (ignoring comments).
+
+    Args:
+        filepath: Path to commit message file
+
+    Returns:
+        True if message is empty, False otherwise
+    """
     debug_log(f"Checking if commit message is empty: {filepath}")
 
     try:
@@ -1213,7 +1379,8 @@ def is_commit_message_empty(filepath):
         return True
 
 
-def main():
+def main() -> NoReturn:
+    """Main entry point for git-commitai."""
     global DEBUG
 
     # Check for --help flag early and show man page if available
@@ -1224,7 +1391,7 @@ def main():
         else:
             sys.exit(0)
 
-    parser = argparse.ArgumentParser(
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Generate AI-powered git commit messages",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -1338,7 +1505,7 @@ For more information, visit: https://github.com/semperai/git-commitai
     debug_group.add_argument("--api-url", help="Override API URL")
     debug_group.add_argument("--model", help="Override model name")
 
-    args = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args()
 
     # Enable debug mode if flag is set
     if args.debug:
@@ -1373,15 +1540,15 @@ For more information, visit: https://github.com/semperai/git-commitai
         sys.exit(1)
 
     # Get configuration (including repo-specific config)
-    config = get_env_config(args)
+    config: Dict[str, Any] = get_env_config(args)
 
     # Build the AI prompt using repository-specific customization
-    prompt = build_ai_prompt(config["repo_config"], args, allow_empty=args.allow_empty,
+    prompt: str = build_ai_prompt(config["repo_config"], args, allow_empty=args.allow_empty,
                             author=args.author, date=args.date)
 
     # Get git information
-    git_diff = get_git_diff(amend=args.amend, allow_empty=args.allow_empty)
-    all_files = get_staged_files(amend=args.amend, allow_empty=args.allow_empty)
+    git_diff: str = get_git_diff(amend=args.amend, allow_empty=args.allow_empty)
+    all_files: str = get_staged_files(amend=args.amend, allow_empty=args.allow_empty)
 
     # Handle template placeholders if using custom template
     if config["repo_config"].get('prompt_template'):
@@ -1416,13 +1583,13 @@ Here are all the modified files with their content for context:
 Generate the commit message following the rules above:"""
 
     # Make API request with retry logic
-    commit_message = make_api_request(config, prompt)
+    commit_message: str = make_api_request(config, prompt)
 
     # Get git directory
-    git_dir = get_git_dir()
+    git_dir: str = get_git_dir()
 
     # Create commit message file
-    commit_file = create_commit_message_file(
+    commit_file: str = create_commit_message_file(
         git_dir,
         commit_message,
         amend=args.amend,
@@ -1435,14 +1602,14 @@ Generate the commit message following the rules above:"""
     )
 
     # Get modification time before editing
-    mtime_before = os.path.getmtime(commit_file)
+    mtime_before: float = os.path.getmtime(commit_file)
 
     # Open editor
-    editor = get_git_editor()
+    editor: str = get_git_editor()
     open_editor(commit_file, editor)
 
     # Check if file was modified (saved)
-    mtime_after = os.path.getmtime(commit_file)
+    mtime_after: float = os.path.getmtime(commit_file)
 
     if mtime_before == mtime_after:
         # File wasn't saved (user did :q! or equivalent)
@@ -1462,7 +1629,7 @@ Generate the commit message following the rules above:"""
 
     # Perform the commit
     try:
-        commit_cmd = ["git", "commit"]
+        commit_cmd: List[str] = ["git", "commit"]
 
         if args.amend:
             commit_cmd.append("--amend")
