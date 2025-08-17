@@ -8,7 +8,7 @@ class TestGetStagedFilesComplexCases:
         """Test get_staged_files with file processing errors."""
         with patch("git_commitai.run_git") as mock_run:
             def side_effect(args, check=True):
-                if "--name-only" in args:
+                if "diff" in args and "--cached" in args and "--name-only" in args:
                     return "file1.py\nfile2.py"
                 elif "--numstat" in args:
                     # Simulate error for one file
@@ -24,6 +24,7 @@ class TestGetStagedFilesComplexCases:
             # Should still process file2.py despite file1.py error
             assert "file2.py" in result
             assert "print('hello')" in result
+            assert "file1.py" not in result
 
     def test_get_staged_files_amend_with_fatal_error(self):
         """Test get_staged_files in amend mode with fatal errors."""
@@ -42,5 +43,11 @@ class TestGetStagedFilesComplexCases:
             mock_run.side_effect = side_effect
             result = git_commitai.get_staged_files(amend=True)
             # Should handle the error gracefully
-            assert result == "" or "file.txt" in result
+            assert result in ("", "# No files changed (empty commit)") or "file.txt" in result
+            # Verify we attempted both staged and HEAD fallbacks for content
+            mock_run.assert_any_call(["show", ":file.txt"], check=False)
+            mock_run.assert_any_call(["show", "HEAD:file.txt"], check=False)
+            # Verify we attempted both numstat checks (index and HEAD range)
+            mock_run.assert_any_call(["diff", "--cached", "--numstat", "--", "file.txt"], check=False)
+            mock_run.assert_any_call(["diff", "HEAD^", "HEAD", "--numstat", "--", "file.txt"], check=False)
 
