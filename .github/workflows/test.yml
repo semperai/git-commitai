@@ -60,10 +60,12 @@ jobs:
         git config --global user.name "Test User"
 
     - name: Test script execution
+      shell: bash
       run: |
         python git_commitai.py --help || true
 
     - name: Test in git repository
+      shell: bash
       run: |
         # Create a test file with a different name that's not in .gitignore
         echo "test content" > test_integration.txt
