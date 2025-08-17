@@ -79,23 +79,6 @@ The installer will:
 ### Alternative Installation Methods
 
 <details>
-<summary>User-only installation (without sudo)</summary>
-
-```bash
-# Install to ~/.local/bin instead of /usr/local/bin
-curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install.sh | bash -s -- --user
-```
-</details>
-
-<details>
-<summary>System-wide installation (requires sudo)</summary>
-
-```bash
-curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install.sh | sudo bash -s -- --system
-```
-</details>
-
-<details>
 <summary>Manual installation from Git</summary>
 
 ```bash
@@ -116,11 +99,8 @@ cp git_commitai.py ~/.local/bin/git-commitai
 git config --global alias.commitai '!python3 '"$(pwd)"'/git_commitai.py'
 
 
-# Optional: Install man page
-sudo mkdir -p /usr/local/share/man/man1
 sudo cp git-commitai.1 /usr/local/share/man/man1/
 sudo mandb  # Update man database on Linux
-# Or: sudo makewhatis /usr/local/share/man  # On macOS
 
 # Set up environment variables (add to ~/.bashrc or ~/.zshrc)
 export GIT_COMMIT_AI_KEY="your-api-key"
@@ -149,21 +129,6 @@ pytest
 
 # Create git alias pointing to your dev version
 git config --global alias.commitai '!python3 '"$(pwd)"'/git_commitai.py'
-```
-</details>
-
-<details>
-<summary>Uninstall</summary>
-
-```bash
-# Using the installer script
-curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install.sh | bash -s -- --uninstall
-
-# Or manually remove files
-sudo rm -f /usr/local/bin/git-commitai
-sudo rm -f /usr/local/share/man/man1/git-commitai.1
-rm -f ~/.local/bin/git-commitai
-git config --global --unset alias.commitai
 ```
 </details>
 
