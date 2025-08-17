@@ -105,7 +105,7 @@ def show_man_page() -> bool:
     """
     try:
         # Try to use man command to show the man page
-        result: subprocess.CompletedProcess[bytes] = subprocess.run(
+        result = subprocess.run(
             ["man", "git-commitai"],
             check=False
         )
@@ -278,7 +278,7 @@ def run_git(args: List[str], check: bool = True) -> str:
     debug_log(f"Running git command: git {' '.join(args)}")
 
     try:
-        result: subprocess.CompletedProcess[str] = subprocess.run(
+        result = subprocess.run(
             ["git"] + args,
             capture_output=True,
             text=True,
@@ -482,7 +482,7 @@ def check_staged_changes(amend: bool = False, auto_stage: bool = False, allow_em
         # First, check if there are any changes to stage
         try:
             # Check for modified tracked files
-            result: subprocess.CompletedProcess[bytes] = subprocess.run(["git", "diff", "--quiet"], capture_output=True)
+            result = subprocess.run(["git", "diff", "--quiet"], capture_output=True)
             if result.returncode != 0:
                 debug_log("Found unstaged changes, auto-staging them")
                 # There are unstaged changes in tracked files, stage them
@@ -501,7 +501,7 @@ def check_staged_changes(amend: bool = False, auto_stage: bool = False, allow_em
             run_git(["rev-parse", "HEAD"], check=True)
             debug_log("Found previous commit to amend")
             return True
-        except:
+        except subprocess.CalledProcessError:
             debug_log("No previous commit to amend")
             print("fatal: You have nothing to amend.")
             return False
