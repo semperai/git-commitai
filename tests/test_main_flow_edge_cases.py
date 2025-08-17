@@ -17,7 +17,7 @@ class TestMainFlowEdgeCases:
     def test_main_version_flag(self):
         """Test --version flag."""
         with patch("sys.argv", ["git-commitai", "--version"]):
-            with pytest.raises(SystemExit) as exc_info:
+            with pytest.raises(SystemExit):
                 with patch("sys.stdout", new=StringIO()) as fake_out:
                     git_commitai.main()
                 output = fake_out.getvalue()
