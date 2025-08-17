@@ -8,13 +8,17 @@ class TestMainFlowBoundaryConditions:
 
     def test_main_with_git_commit_subprocess_error(self):
         """Test main when git commit raises subprocess error."""
-        with patch("subprocess.run") as mock_run:
+        with patch("git_commitai.subprocess.run") as mock_run:
             def side_effect(*args, **kwargs):
-                # Allow initial git checks to pass
-                if isinstance(args[0], list) and "commit" in args[0]:
+                # Allow initial git checks to pass; fail only the commit
+                cmd = args[0]
+                tokens = cmd if isinstance(cmd, list) else [cmd]
+                if any("commit" in str(t) for t in tokens):
                     raise subprocess.CalledProcessError(128, ["git", "commit"], stderr="fatal: error")
                 result = MagicMock()
                 result.returncode = 0
+                result.stdout = ""
+                result.stderr = ""
                 return result
 
             mock_run.side_effect = side_effect
