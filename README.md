@@ -23,26 +23,12 @@
   <br />
 
   <!-- Badges -->
-  <p>
-    <a href="https://github.com/semperai/git-commitai/stargazers">
-      <img src="https://img.shields.io/github/stars/semperai/git-commitai?style=flat" alt="Stars" />
-    </a>
-    <a href="https://github.com/semperai/git-commitai/actions">
-      <img src="https://img.shields.io/github/actions/workflow/status/semperai/git-commitai/test.yml?style=flat&label=Tests" alt="Tests" />
-    </a>
-    <a href='https://coveralls.io/github/semperai/git-commitai'>
-      <img src='https://coveralls.io/repos/github/semperai/git-commitai/badge.svg' alt='Coverage Status' />
-    </a>
-    <a href="https://github.com/semperai/git-commitai/releases">
-      <img src="https://img.shields.io/github/v/release/semperai/git-commitai?style=flat" alt="Release" />
-    </a>
-    <a href="https://github.com/semperai/git-commitai/blob/master/LICENSE">
-      <img src="https://img.shields.io/github/license/semperai/git-commitai?style=flat" alt="License" />
-    </a>
-    <a href="https://github.com/semperai/git-commitai">
-      <img src="https://img.shields.io/badge/python-3.8+-blue?style=flat" alt="Python" />
-    </a>
-  </p>
+  [![Stars](https://img.shields.io/github/stars/semperai/git-commitai?style=flat)](https://github.com/semperai/git-commitai/stargazers)
+  [![Tests](https://img.shields.io/github/actions/workflow/status/semperai/git-commitai/test.yml?style=flat&label=Tests)](https://github.com/semperai/git-commitai/actions)
+  [![Coverage Status](https://coveralls.io/repos/github/semperai/git-commitai/badge.svg)](https://coveralls.io/github/semperai/git-commitai)
+  [![Release](https://img.shields.io/github/v/release/semperai/git-commitai?style=flat)](https://github.com/semperai/git-commitai/releases)
+  [![License](https://img.shields.io/github/license/semperai/git-commitai?style=flat)](https://github.com/semperai/git-commitai/blob/master/LICENSE)
+  [![Python](https://img.shields.io/badge/python-3.8+-blue?style=flat)](https://github.com/semperai/git-commitai)
 </div>
 
 ---
