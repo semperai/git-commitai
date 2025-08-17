@@ -262,7 +262,7 @@ setup_api_credentials() {
             ;;
         4)
             API_URL="http://localhost:11434/v1/chat/completions"
-            DEFAULT_MODEL="llama2"
+            DEFAULT_MODEL="qwen2.5-coder:7b"
             API_KEY="not-needed"
             print_color $YELLOW "Make sure Ollama is running locally"
             ;;

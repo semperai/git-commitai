@@ -110,16 +110,39 @@ Falls back to git's configured editor or \fBvi\fR.
 
 .SH TEMPLATE FILES
 Git Commit AI automatically detects and uses \fB.gitmessage\fR template files to understand your project's commit conventions.
+
+.SS Precedence Order
 The tool looks for templates in this order (first found wins):
 
 .IP 1. 4
-Git config template: Set via \fBgit config commit.template\fR
+\fBRepository template\fR: \fB.gitmessage\fR in your repository root
 .IP 2. 4
-Repository template: \fB.gitmessage\fR in your repository root
+\fBGit config template\fR: Set via \fBgit config commit.template\fR
 .IP 3. 4
-Global template: \fB~/.gitmessage\fR in your home directory
+\fBGlobal template\fR: \fB~/.gitmessage\fR in your home directory
+
+.P
+Repository-specific \fB.gitmessage\fR files take precedence over configured templates.
+This ensures teams can enforce project-specific conventions by including a \fB.gitmessage\fR file in their repository,
+regardless of individual developer configurations.
 
 When a template is found, it's used as additional context to help generate messages that follow your project's conventions.
+
+.SS Template Configuration Examples
+.nf
+# Create a repository-specific template
+$ cat > .gitmessage << 'EOF'
+# Format: <type>(<scope>): <subject>
+# Types: feat, fix, docs, style, refactor, test, chore
+EOF
+
+# Configure a template via git config
+$ git config --global commit.template ~/.my-template
+$ git config commit.template .github/commit-template
+
+# Create a global fallback template
+$ cp template.txt ~/.gitmessage
+.fi
 
 .SH EXAMPLES
 .SS Basic Usage
@@ -188,10 +211,13 @@ $ cat > .gitmessage << 'EOF'
 # Types: feat, fix, docs, style, refactor, test, chore
 EOF
 
-# Git Commit AI will automatically use this template
+# Git Commit AI will use this template automatically
 $ git add .
 $ git commitai
 # Generated message follows template format
+
+# Note: The repository .gitmessage overrides any configured
+# templates or global ~/.gitmessage file
 .fi
 
 .SH DEBUGGING
@@ -206,7 +232,7 @@ File processing information
 .IP \(bu 2
 Configuration and environment details
 .IP \(bu 2
-Template file detection and loading
+Template file detection and loading (shows which template was chosen and why)
 .IP \(bu 2
 Error messages and stack traces
 
@@ -220,12 +246,14 @@ Or view it on screen while saving to a file:
 $ git commitai --debug 2>&1 | tee debug.log
 .fi
 
+The debug output for template detection will show the precedence order and which template was selected.
 When reporting bugs, include relevant portions of the debug output.
 
 .SH FILES
 .TP
 .B .gitmessage
 Project-specific or global commit message template file.
+Repository \fB.gitmessage\fR files take precedence over all other templates.
 
 .TP
 .B .git/COMMIT_EDITMSG
@@ -289,6 +317,6 @@ Report bugs at: https://github.com/semperai/git-commitai/issues
 Semper AI (https://github.com/semperai)
 
 .SH COPYRIGHT
-Copyright (C) 2024 Semper AI. MIT License.
+Copyright (C) 2025 Semper AI. MIT License.
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.

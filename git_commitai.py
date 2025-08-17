@@ -7,6 +7,7 @@ import subprocess
 import shlex
 import argparse
 import time
+import re
 from datetime import datetime
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
@@ -21,10 +22,63 @@ RETRY_DELAY = 2  # seconds between retries
 RETRY_BACKOFF = 1.5  # backoff multiplier for each retry
 
 
+def redact_secrets(message):
+    """Redact sensitive information from debug messages."""
+    if not isinstance(message, str):
+        message = str(message)
+
+    # Patterns for common sensitive data
+    patterns = [
+        # API keys (various formats)
+        (r'\b[A-Za-z0-9]{32,}\b', lambda m: m.group()[:4] + '...' + m.group()[-4:] if len(m.group()) > 8 else 'REDACTED'),
+
+        # Bearer tokens in Authorization headers
+        (r'Bearer\s+[\w\-\.]+', 'Bearer [REDACTED]'),
+
+        # Basic auth credentials
+        (r'Basic\s+[\w\+/=]+', 'Basic [REDACTED]'),
+
+        # API keys in various formats (key=value, apikey:value, etc.)
+        (r'(api[_\-]?key|token|secret|password|auth|credential)["\']?\s*[:=]\s*["\']?[\w\-\.]+["\']?',
+         lambda m: m.group().split(':')[0].split('=')[0] + '=[REDACTED]'),
+
+        # Environment variable values for sensitive vars
+        (r'GIT_COMMIT_AI_KEY["\']?\s*[:=]\s*["\']?[\w\-\.]+["\']?', 'GIT_COMMIT_AI_KEY=[REDACTED]'),
+
+        # URLs with embedded credentials
+        (r'(https?://)([^:]+):([^@]+)@', r'\1[USER]:[PASS]@'),
+
+        # JSON values for sensitive keys
+        (r'"(api_key|apiKey|token|secret|password|auth|credential)"\s*:\s*"[^"]*"',
+         lambda m: f'"{m.group().split(":")[0].strip()[1:-1]}": "[REDACTED]"'),
+
+        # OAuth tokens
+        (r'oauth[_\-]?token["\']?\s*[:=]\s*["\']?[\w\-\.]+["\']?', 'oauth_token=[REDACTED]'),
+
+        # SSH keys (partial redaction)
+        (r'ssh-rsa\s+[\w\+/=]+', lambda m: 'ssh-rsa ' + m.group().split()[1][:10] + '...[REDACTED]'),
+
+        # Private keys
+        (r'-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----[\s\S]+?-----END\s+(RSA\s+)?PRIVATE\s+KEY-----',
+         '-----BEGIN PRIVATE KEY-----\n[REDACTED]\n-----END PRIVATE KEY-----'),
+    ]
+
+    redacted = message
+    for pattern, replacement in patterns:
+        if callable(replacement):
+            redacted = re.sub(pattern, replacement, redacted, flags=re.IGNORECASE)
+        else:
+            redacted = re.sub(pattern, replacement, redacted, flags=re.IGNORECASE)
+
+    return redacted
+
+
 def debug_log(message):
-    """Log debug messages if debug mode is enabled."""
+    """Log debug messages if debug mode is enabled, with secret redaction."""
     if DEBUG:
-        print(f"DEBUG: {message}", file=sys.stderr)
+        # Redact sensitive information before logging
+        safe_message = redact_secrets(message)
+        print(f"DEBUG: {safe_message}", file=sys.stderr)
 
 
 def show_man_page():
@@ -48,7 +102,7 @@ def get_git_root():
     """Get the root directory of the git repository."""
     try:
         return run_git(["rev-parse", "--show-toplevel"]).strip()
-    except:
+    except (subprocess.CalledProcessError, Exception):
         return os.getcwd()
 
 
@@ -118,7 +172,7 @@ def load_gitcommitai_config():
             config['prompt_template'] = prompt_template
             debug_log(f"Loaded prompt template ({len(prompt_template)} characters)")
 
-    except Exception as e:
+    except Exception as e:  # Catch all exceptions
         debug_log(f"Error loading .gitcommitai: {e}")
 
     return config
@@ -152,6 +206,7 @@ def get_env_config(args):
     # Add repository-specific configuration
     config["repo_config"] = repo_config
 
+    # Log config with redacted sensitive values
     debug_log(f"Config loaded - URL: {config['api_url']}, Model: {config['model']}, Key present: {bool(config['api_key'])}")
     debug_log(f"Repository config keys: {list(repo_config.keys())}")
 
@@ -222,14 +277,10 @@ def build_ai_prompt(repo_config, args, allow_empty=False):
                 if placeholder in base_prompt:
                     base_prompt = base_prompt.replace(placeholder, value)
 
-        # Clean up any empty lines from unused placeholders
-        lines = base_prompt.split('\n')
-        cleaned_lines = []
-        for line in lines:
-            # Remove lines that only had a placeholder that resolved to empty
-            if line.strip() and not (line.strip() in replacements.values() and not replacements.get(line.strip(), True)):
-                cleaned_lines.append(line)
-        base_prompt = '\n'.join(cleaned_lines)
+        # Normalize excessive blank lines introduced by empty replacements
+        while "\n\n\n" in base_prompt:
+            base_prompt = base_prompt.replace("\n\n\n", "\n\n")
+        base_prompt = base_prompt.strip("\n")
 
     else:
         # Use default prompt
@@ -655,6 +706,10 @@ def get_staged_files(amend=False, allow_empty=False):
                             ["show", f":{filename}"], check=False
                         ).strip()
 
+                    # Redact any secrets in file content before including in debug logs
+                    if DEBUG:
+                        debug_log(f"Processing file {filename} with content length: {len(staged_content)}")
+
                     if (
                         staged_content or staged_content == ""
                     ):  # Include empty files too
@@ -777,10 +832,24 @@ def read_gitmessage_template():
     """Read .gitmessage template file if it exists."""
     debug_log("Checking for .gitmessage template file")
 
-    # Check multiple possible locations in order of precedence
-    possible_paths = []
+    # 1. Check for .gitmessage in repository root (HIGHEST PRIORITY)
+    try:
+        git_root = get_git_root()
+        repo_gitmessage = os.path.join(git_root, ".gitmessage")
+        if os.path.isfile(repo_gitmessage):
+            debug_log(f"Found repository .gitmessage: {repo_gitmessage}")
+            try:
+                with open(repo_gitmessage, 'r') as f:
+                    content = f.read()
+                debug_log(f"Successfully read repository .gitmessage template")
+                debug_log(f"Template content length: {len(content)} characters")
+                return content
+            except (IOError, OSError) as e:
+                debug_log(f"Failed to read repository template from {repo_gitmessage}: {e}")
+    except Exception as e:
+        debug_log(f"Error checking for repository .gitmessage: {e}")
 
-    # 1. Check git config for commit.template
+    # 2. Check git config for commit.template (SECOND PRIORITY)
     try:
         configured_template = run_git(["config", "--get", "commit.template"], check=False).strip()
         if configured_template:
@@ -789,37 +858,40 @@ def read_gitmessage_template():
                 configured_template = os.path.expanduser(configured_template)
             # If not absolute path, make it relative to git root
             elif not os.path.isabs(configured_template):
-                git_root = get_git_root()
-                configured_template = os.path.join(git_root, configured_template)
-            possible_paths.append(configured_template)
-            debug_log(f"Found configured template: {configured_template}")
-    except:
-        pass
+                try:
+                    git_root = get_git_root()
+                    configured_template = os.path.join(git_root, configured_template)
+                except Exception:
+                    pass
 
-    # 2. Check for .gitmessage in repository root
+            if os.path.isfile(configured_template):
+                debug_log(f"Found configured template: {configured_template}")
+                try:
+                    with open(configured_template, 'r') as f:
+                        content = f.read()
+                    debug_log(f"Successfully read configured template")
+                    debug_log(f"Template content length: {len(content)} characters")
+                    return content
+                except (IOError, OSError) as e:
+                    debug_log(f"Failed to read configured template from {configured_template}: {e}")
+    except Exception as e:
+        debug_log(f"Error checking for configured template: {e}")
+
+    # 3. Check for global .gitmessage in home directory (LOWEST PRIORITY)
     try:
-        git_root = get_git_root()
-        repo_gitmessage = os.path.join(git_root, ".gitmessage")
-        possible_paths.append(repo_gitmessage)
-    except:
-        pass
-
-    # 3. Check for global .gitmessage in home directory
-    home_gitmessage = os.path.expanduser("~/.gitmessage")
-    possible_paths.append(home_gitmessage)
-
-    # Try to read from the first existing file
-    for path in possible_paths:
-        if path and os.path.isfile(path):
+        home_gitmessage = os.path.expanduser("~/.gitmessage")
+        if os.path.isfile(home_gitmessage):
+            debug_log(f"Found home directory .gitmessage: {home_gitmessage}")
             try:
-                with open(path, 'r') as f:
+                with open(home_gitmessage, 'r') as f:
                     content = f.read()
-                debug_log(f"Successfully read .gitmessage template from: {path}")
+                debug_log(f"Successfully read home directory .gitmessage template")
                 debug_log(f"Template content length: {len(content)} characters")
                 return content
             except (IOError, OSError) as e:
-                debug_log(f"Failed to read template from {path}: {e}")
-                continue
+                debug_log(f"Failed to read home template from {home_gitmessage}: {e}")
+    except Exception as e:
+        debug_log(f"Error checking for home .gitmessage: {e}")
 
     debug_log("No .gitmessage template file found")
     return None
@@ -842,13 +914,19 @@ def make_api_request(config, message):
                 "messages": [{"role": "user", "content": message}],
             }
 
+            # Create request with headers (will be redacted in debug output)
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {config['api_key']}",
+            }
+
+            # Log headers with redacted auth
+            debug_log(f"Request headers: {redact_secrets(str(headers))}")
+
             req = Request(
                 config["api_url"],
                 data=json.dumps(payload).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {config['api_key']}",
-                },
+                headers=headers,
             )
 
             with urlopen(req) as response:
@@ -946,10 +1024,10 @@ def create_commit_message_file(
 
         # If there are AI-generated warnings, add them FIRST in the comment section
         if warning_comments:
-            for line in warning_comments:
+            for idx, line in enumerate(warning_comments):
                 if line.strip():  # Only write non-empty lines
                     f.write(f"{line}\n")
-                elif warning_comments.index(line) < len(warning_comments) - 1:
+                elif idx < len(warning_comments) - 1:
                     # Write empty lines between warnings, but not at the end
                     f.write("#\n")
             f.write("#\n")  # Add separator after all warnings

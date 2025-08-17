@@ -76,12 +76,13 @@ The installer will:
 - ✅ Guide you through API configuration
 - ✅ Add to your PATH automatically
 
-### Manual Installation Options
+### Alternative Installation Methods
 
 <details>
-<summary>Install for current user only</summary>
+<summary>User-only installation (without sudo)</summary>
 
 ```bash
+# Install to ~/.local/bin instead of /usr/local/bin
 curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install.sh | bash -s -- --user
 ```
 </details>
@@ -95,10 +96,73 @@ curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install
 </details>
 
 <details>
+<summary>Manual installation from Git</summary>
+
+```bash
+# Clone the repository
+git clone https://github.com/semperai/git-commitai.git
+cd git-commitai
+
+# Make the script executable
+chmod +x git_commitai.py
+
+# Option 1: Copy to your PATH
+sudo cp git_commitai.py /usr/local/bin/git-commitai
+# Or for user installation:
+mkdir -p ~/.local/bin
+cp git_commitai.py ~/.local/bin/git-commitai
+
+# Option 2: Set up git alias directly
+git config --global alias.commitai "!python3 $(pwd)/git_commitai.py"
+
+# Optional: Install man page
+sudo mkdir -p /usr/local/share/man/man1
+sudo cp git-commitai.1 /usr/local/share/man/man1/
+sudo mandb  # Update man database on Linux
+# Or: sudo makewhatis /usr/local/share/man  # On macOS
+
+# Set up environment variables (add to ~/.bashrc or ~/.zshrc)
+export GIT_COMMIT_AI_KEY="your-api-key"
+export GIT_COMMIT_AI_URL="https://openrouter.ai/api/v1/chat/completions"
+export GIT_COMMIT_AI_MODEL="qwen/qwen3-coder"
+```
+</details>
+
+<details>
+<summary>Development installation</summary>
+
+```bash
+# Clone and set up for development
+git clone https://github.com/semperai/git-commitai.git
+cd git-commitai
+
+# Create virtual environment (optional but recommended)
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install development dependencies
+pip install -r requirements.txt
+
+# Run tests
+pytest
+
+# Create git alias pointing to your dev version
+git config --global alias.commitai "!python3 $(pwd)/git_commitai.py"
+```
+</details>
+
+<details>
 <summary>Uninstall</summary>
 
 ```bash
+# Using the installer script
 curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install.sh | bash -s -- --uninstall
+
+# Or manually remove files
+sudo rm -f /usr/local/bin/git-commitai
+sudo rm -f /usr/local/share/man/man1/git-commitai.1
+rm -f ~/.local/bin/git-commitai
+git config --global --unset alias.commitai
 ```
 </details>
 
@@ -122,17 +186,93 @@ You can also override these settings per-command using CLI flags:
 git commitai --model "gpt-4o" --api-key "sk-..."
 
 # Test with a local LLM
-git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "llama2"
+git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "qwen2.5-coder:7b"
 ```
+
+### Running with Local LLMs (Ollama)
+
+For enhanced privacy and offline usage, you can run Git Commit AI with local LLMs using Ollama:
+
+<details>
+<summary>Setting up Ollama</summary>
+
+#### 1. Install Ollama
+
+```bash
+# macOS
+brew install ollama
+
+# Linux
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Windows
+# Download from https://ollama.ai/download
+```
+
+#### 2. Start Ollama service
+
+```bash
+# Start Ollama (if not already running)
+ollama serve
+
+# Pull a code-optimized model
+ollama pull qwen2.5-coder:7b
+
+# Verify the model is downloaded
+ollama list
+```
+
+#### 3. Configure Git Commit AI for Ollama
+
+```bash
+# Set environment variables for Ollama
+export GIT_COMMIT_AI_URL="http://localhost:11434/v1/chat/completions"
+export GIT_COMMIT_AI_MODEL="qwen2.5-coder:7b"
+export GIT_COMMIT_AI_KEY="not-needed"
+
+# Add to ~/.bashrc or ~/.zshrc to make permanent
+```
+
+#### 4. Test the setup
+
+```bash
+# Make a test commit
+git add .
+git commitai --debug  # Use debug to see the API calls
+
+# Or use per-command overrides without setting env vars
+git commitai --api-url "http://localhost:11434/v1/chat/completions" \
+             --model "qwen2.5-coder:7b" \
+             --api-key "not-needed"
+```
+
+#### Troubleshooting
+
+- **Connection refused**: Make sure Ollama is running (`ollama serve`)
+- **Model not found**: Pull the model first (`ollama pull qwen2.5-coder:7b`)
+- **Slow generation**: Try a smaller model like `llama3.2:3b` or upgrade your hardware
+- **Out of memory**: Use a smaller model or increase Ollama's memory limit
+
+#### Performance Tips
+
+- Models with "instruct" or "chat" variants typically work better for commit messages
+- Code-specific models like `qwen2.5-coder` understand diffs better
+- Run `ollama serve` in the background or as a service for convenience
+- For faster responses on limited hardware, consider `qwen2.5-coder:3b`
+
+</details>
 
 ### Commit Message Templates (.gitmessage)
 
 Git Commit AI automatically reads and uses your `.gitmessage` template files to understand your project's commit conventions. This helps generate messages that match your team's style guide.
 
-The tool looks for templates in this order (first found wins):
-1. **Git config template**: Set via `git config commit.template`
-2. **Repository template**: `.gitmessage` in your repository root
+The tool looks for templates in this **precedence order** (first found wins):
+
+1. **Repository template**: `.gitmessage` in your repository root
+2. **Git config template**: Set via `git config commit.template`
 3. **Global template**: `~/.gitmessage` in your home directory
+
+> **Note**: Repository-specific `.gitmessage` files take precedence over configured templates. This ensures teams can enforce project-specific conventions by including a `.gitmessage` file in their repository, regardless of individual developer configurations.
 
 #### Setting Up a Template
 
@@ -159,14 +299,24 @@ cat > .gitmessage << 'EOF'
 # The body should explain the motivation for the change
 EOF
 
-# Or set a global template
+# Or configure a template via git config
 git config --global commit.template ~/.gitmessage
+git config commit.template .github/commit-template  # Repository-specific config
 
-# Or set a repository-specific template
-git config commit.template .github/commit-template
+# Or use a global fallback template
+cp .gitmessage ~/.gitmessage
 ```
 
 When a template is found, Git Commit AI uses it as additional context to generate messages that follow your conventions while still adhering to Git best practices.
+
+#### Template Precedence Example
+
+If you have:
+- `.gitmessage` in your repository root
+- A template configured via `git config commit.template`
+- `~/.gitmessage` in your home directory
+
+Git Commit AI will use the `.gitmessage` from your repository root, ignoring the others. This ensures project-specific conventions always take precedence.
 
 ## 📖 Usage
 
@@ -327,6 +477,9 @@ git commitai
 
 # The AI will generate messages following your template format
 # Example output: "feat(auth): Add JWT token validation"
+
+# Note: This .gitmessage in your repo will override any configured templates
+# or global ~/.gitmessage, ensuring team conventions are followed
 ```
 
 ## 🐛 Debugging
@@ -355,7 +508,7 @@ The debug output includes:
 - API request/response details
 - File processing information
 - Configuration and environment details (including CLI overrides)
-- Template file detection and loading
+- Template file detection and loading (shows which template was chosen and why)
 - Error messages and stack traces
 
 When reporting bugs, please include relevant portions of the debug output.

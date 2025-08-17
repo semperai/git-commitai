@@ -1,11 +1,7 @@
 """Tests for .gitcommitai configuration file functionality."""
 
-import pytest
-import os
 import json
-import tempfile
 from unittest.mock import patch, mock_open, MagicMock
-from io import StringIO
 
 import git_commitai
 
