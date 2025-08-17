@@ -30,6 +30,9 @@
     <a href="https://github.com/semperai/git-commitai/actions">
       <img src="https://img.shields.io/github/actions/workflow/status/semperai/git-commitai/test.yml?style=flat&label=Tests" alt="Tests" />
     </a>
+    <a href="https://codecov.io/gh/semperai/git-commitai" >
+      <img src="https://codecov.io/gh/semperai/git-commitai/branch/master/graph/badge.svg?token=DA7BBXQ0LW"/>
+    </a>
     <a href="https://github.com/semperai/git-commitai/releases">
       <img src="https://img.shields.io/github/v/release/semperai/git-commitai?style=flat" alt="Release" />
     </a>
