@@ -238,6 +238,9 @@ $ git commitai -m "Refactored auth system for JWT"
 
 # Auto-stage and commit tracked files
 $ git commitai -a
+
+# Preview without committing
+$ git commitai --dry-run
 .fi
 
 .SS Advanced Usage
@@ -265,6 +268,39 @@ $ git commitai --date "2 weeks ago"
 
 # Combine author and date overrides
 $ git commitai --author "Bot <bot@ci.com>" --date "@1705329000"
+.fi
+
+.SS Dry-Run Mode
+.nf
+# Preview what would be committed without actually committing
+$ git commitai --dry-run
+
+# Combine dry-run with other options
+$ git commitai --dry-run -a -m "Added new feature"
+$ git commitai --dry-run --amend
+$ git commitai --dry-run --allow-empty
+
+# Debug dry-run to see the full process
+$ git commitai --dry-run --debug 2>&1 | tee preview.log
+
+# Example output:
+# Dry run mode - no commit will be created
+#
+# On branch main
+# Changes to be committed:
+#   M src/main.py
+#   A tests/test_main.py
+#
+# Generated commit message:
+#
+# Add unit tests for main module
+#
+# - Created comprehensive test suite
+# - Added edge case handling
+# - Improved code coverage to 95%
+#
+# (git hooks would be skipped)
+# To actually commit these changes, run without --dry-run
 .fi
 
 .SS API Configuration
