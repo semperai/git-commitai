@@ -171,7 +171,8 @@ install_system() {
     print_color $BLUE "Installing git-commitai..."
 
     # Create temp directory for downloads
-    local temp_dir=$(mktemp -d)
+    local temp_dir
+    temp_dir=$(mktemp -d)
     trap "rm -rf $temp_dir" EXIT
 
     # Download script to temp directory first
