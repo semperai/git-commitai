@@ -39,5 +39,6 @@ class TestRedactSecretsComprehensive:
         assert "Basic [REDACTED]" in result
         assert "oauth_token=[REDACTED]" in result
         assert '"apiKey"=[REDACTED]' in result or '"apiKey": "[REDACTED]"' in result
+        assert '"token": "[REDACTED]"' in result
         assert "[USER]:[PASS]@" in result
         assert "ssh-rsa AAAA...[REDACTED]" in result or "ssh-rsa AAAAB3NzaC...[REDACTED]" in result
