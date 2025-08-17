@@ -30,8 +30,12 @@ detect_os() {
         OS="linux"
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         OS="macos"
-        # macOS paths - prefer standard location
-        MAN_DIR="/usr/local/share/man/man1"
+        # macOS paths - prefer Homebrew if available
+        if command -v brew &> /dev/null; then
+            MAN_DIR="$(brew --prefix)/share/man/man1"
+        else
+            MAN_DIR="/usr/local/share/man/man1"
+        fi
     elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "win32" ]]; then
         OS="windows"
         print_color $YELLOW "⚠️  Windows detected. Consider using WSL (Windows Subsystem for Linux) for best compatibility."
@@ -111,7 +115,8 @@ create_directory() {
     fi
 
     # Try to create parent directory first to check if we need sudo
-    local parent_dir=$(dirname "$dir")
+    local parent_dir
+    parent_dir=$(dirname "$dir")
 
     if is_writable "$parent_dir"; then
         print_color $YELLOW "Creating $dir..."
@@ -150,7 +155,8 @@ remove_file() {
         return 0
     fi
 
-    local dir=$(dirname "$file")
+    local dir
+    dir=$(dirname "$file")
 
     if is_writable "$dir"; then
         rm -f "$file"
@@ -384,8 +390,8 @@ uninstall() {
     fi
 
     # Remove system files with verification
-    remove_file "$INSTALL_DIR/git-commitai" "git-commitai executable"
-    remove_file "$MAN_DIR/git-commitai.1" "man page"
+    remove_file "$INSTALL_DIR/git-commitai"
+    remove_file "$MAN_DIR/git-commitai.1"
 
     # Remove git alias (doesn't require sudo)
     git config --global --unset alias.commitai 2>/dev/null && \
