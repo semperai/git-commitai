@@ -28,4 +28,5 @@ class TestBuildAIPromptEdgeCases:
         prompt = git_commitai.build_ai_prompt(repo_config, mock_args)
         # Should normalize to max 2 newlines
         assert "\n\n\n" not in prompt
+        assert prompt == "Line1\n\nLine2"
 
