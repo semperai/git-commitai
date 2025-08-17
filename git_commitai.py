@@ -293,21 +293,12 @@ def run_git(args: List[str], check: bool = True) -> str:
         return e.stdout if e.stdout else ""
 
 
-def build_ai_prompt(
-    repo_config: Dict[str, Any],
-    args: argparse.Namespace,
-    allow_empty: bool = False,
-    author: Optional[str] = None,
-    date: Optional[str] = None
-) -> str:
+def build_ai_prompt(repo_config: Dict[str, Any], args: argparse.Namespace) -> str:
     """Build the AI prompt, incorporating repository-specific customization.
 
     Args:
         repo_config: Repository-specific configuration
         args: Parsed command line arguments
-        allow_empty: Whether this is an empty commit
-        author: Custom author if specified
-        date: Custom date if specified
 
     Returns:
         Complete prompt string for AI
@@ -325,11 +316,6 @@ def build_ai_prompt(
             'CONTEXT': f"Additional context from user: {args.message}" if args.message else "",
             'GITMESSAGE': gitmessage_content,
             'AMEND_NOTE': "Note: You are amending the previous commit." if args.amend else "",
-            'AUTO_STAGE_NOTE': "Note: Files were automatically staged using the -a flag." if args.all else "",
-            'NO_VERIFY_NOTE': "Note: Git hooks will be skipped for this commit (--no-verify)." if args.no_verify else "",
-            'ALLOW_EMPTY_NOTE': "Note: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created." if allow_empty else "",
-            'AUTHOR_NOTE': f"Note: Using custom author: {author}" if author else "",
-            'DATE_NOTE': f"Note: Using custom date: {date}" if date else "",
         }
 
         # Start with the template
@@ -1585,8 +1571,7 @@ For more information, visit: https://github.com/semperai/git-commitai
     config: Dict[str, Any] = get_env_config(args)
 
     # Build the AI prompt using repository-specific customization
-    prompt: str = build_ai_prompt(config["repo_config"], args, allow_empty=args.allow_empty,
-                            author=args.author, date=args.date)
+    prompt: str = build_ai_prompt(config["repo_config"], args)
 
     # Get git information
     git_diff: str = get_git_diff(amend=args.amend, allow_empty=args.allow_empty)

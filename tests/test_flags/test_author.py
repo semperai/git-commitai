@@ -8,47 +8,6 @@ import git_commitai
 class TestAuthorFeatures:
     """Test --author specific features."""
 
-    def test_build_ai_prompt_with_author(self):
-        """Test that AI prompt includes author information."""
-        args = MagicMock()
-        args.message = "test context"
-        args.amend = False
-        args.all = False
-        args.no_verify = False
-
-        repo_config = {}
-        author = "John Doe <john@example.com>"
-
-        prompt = git_commitai.build_ai_prompt(
-            repo_config, args, allow_empty=False, author=author, date=None
-        )
-
-        assert "Using custom author: John Doe <john@example.com>" in prompt
-        assert "Note: Using custom author" in prompt
-
-    def test_build_ai_prompt_with_author_custom_template(self):
-        """Test that custom template properly replaces {AUTHOR_NOTE} placeholder."""
-        args = MagicMock()
-        args.message = None
-        args.amend = False
-        args.all = False
-        args.no_verify = False
-
-        repo_config = {
-            'prompt_template': """Custom template for testing.
-            {AUTHOR_NOTE}
-            {CONTEXT}
-            Generate a commit message:"""
-        }
-        author = "Jane Smith <jane@example.com>"
-
-        prompt = git_commitai.build_ai_prompt(
-            repo_config, args, allow_empty=False, author=author, date=None
-        )
-
-        assert "Using custom author: Jane Smith <jane@example.com>" in prompt
-        assert "{AUTHOR_NOTE}" not in prompt  # Should be replaced
-
     def test_create_commit_message_file_with_author(self):
         """Test creating commit message file with author information."""
         with patch("git_commitai.get_current_branch", return_value="main"):
@@ -94,29 +53,6 @@ class TestAuthorFeatures:
                                                     calls = [c for c in mock_run.call_args_list if c.args and isinstance(c.args[0], list)]
                                                     commit_calls = [c for c in calls if "commit" in c.args[0]]
                                                     assert any("--author" in c.args[0] and "Test User <test@example.com>" in c.args[0] for c in commit_calls)
-
-    def test_author_various_formats(self):
-        """Test that different author formats are accepted."""
-        test_cases = [
-            "John Doe <john@example.com>",  # Full format
-            "<john@example.com>",  # Email only
-            "John Doe",  # Name only
-            "John O'Brien <john@example.com>",  # Name with apostrophe
-            "José García <jose@example.com>",  # Unicode characters
-        ]
-
-        for author in test_cases:
-            args = MagicMock()
-            args.message = None
-            args.amend = False
-            args.all = False
-            args.no_verify = False
-
-            prompt = git_commitai.build_ai_prompt(
-                {}, args, allow_empty=False, author=author, date=None
-            )
-
-            assert f"Using custom author: {author}" in prompt
 
     def test_author_with_amend(self):
         """Test --author flag combined with --amend."""

@@ -8,47 +8,6 @@ import git_commitai
 class TestDateFeatures:
     """Test --date specific features."""
 
-    def test_build_ai_prompt_with_date(self):
-        """Test that AI prompt includes date information."""
-        args = MagicMock()
-        args.message = "test context"
-        args.amend = False
-        args.all = False
-        args.no_verify = False
-
-        repo_config = {}
-        date = "2024-01-15 14:30:00"
-
-        prompt = git_commitai.build_ai_prompt(
-            repo_config, args, allow_empty=False, author=None, date=date
-        )
-
-        assert "Using custom date: 2024-01-15 14:30:00" in prompt
-        assert "Note: Using custom date" in prompt
-
-    def test_build_ai_prompt_with_date_custom_template(self):
-        """Test that custom template properly replaces {DATE_NOTE} placeholder."""
-        args = MagicMock()
-        args.message = None
-        args.amend = False
-        args.all = False
-        args.no_verify = False
-
-        repo_config = {
-            'prompt_template': """Custom template for testing.
-            {DATE_NOTE}
-            {CONTEXT}
-            Generate a commit message:"""
-        }
-        date = "2024-12-25T12:00:00"
-
-        prompt = git_commitai.build_ai_prompt(
-            repo_config, args, allow_empty=False, author=None, date=date
-        )
-
-        assert "Using custom date: 2024-12-25T12:00:00" in prompt
-        assert "{DATE_NOTE}" not in prompt  # Should be replaced
-
     def test_create_commit_message_file_with_date(self):
         """Test creating commit message file with date information."""
         with patch("git_commitai.get_current_branch", return_value="main"):
@@ -94,32 +53,6 @@ class TestDateFeatures:
                                                     calls = [c for c in mock_run.call_args_list if c.args and isinstance(c.args[0], list)]
                                                     commit_calls = [c for c in calls if "commit" in c.args[0]]
                                                     assert any("--date" in c.args[0] and "2024-06-15 10:30:00" in c.args[0] for c in commit_calls)
-
-    def test_date_various_formats(self):
-        """Test that different date formats are accepted."""
-        test_cases = [
-            "2024-01-15T14:30:00",  # ISO 8601
-            "2024-01-15 14:30:00",  # Simple format
-            "@1705329000",  # Unix timestamp
-            "2 days ago",  # Relative time
-            "last week",  # Relative time
-            "Mon, 15 Jan 2024 14:30:00 +0000",  # RFC 2822
-            "yesterday",  # Relative
-            "now",  # Current time
-        ]
-
-        for date in test_cases:
-            args = MagicMock()
-            args.message = None
-            args.amend = False
-            args.all = False
-            args.no_verify = False
-
-            prompt = git_commitai.build_ai_prompt(
-                {}, args, allow_empty=False, author=None, date=date
-            )
-
-            assert f"Using custom date: {date}" in prompt
 
     def test_date_with_amend(self):
         """Test --date flag combined with --amend."""
@@ -281,21 +214,3 @@ class TestDateFeatures:
                                                         for c in commit_calls
                                                     )
 
-    def test_build_ai_prompt_with_both_author_and_date(self):
-        """Test that AI prompt includes both author and date when both are provided."""
-        args = MagicMock()
-        args.message = None
-        args.amend = False
-        args.all = False
-        args.no_verify = False
-
-        repo_config = {}
-        author = "CI Bot <ci@example.com>"
-        date = "2024-03-15T10:00:00"
-
-        prompt = git_commitai.build_ai_prompt(
-            repo_config, args, allow_empty=False, author=author, date=date
-        )
-
-        assert f"Using custom author: {author}" in prompt
-        assert f"Using custom date: {date}" in prompt
