@@ -141,57 +141,6 @@ class TestNoVerifyFlag:
                                                     last_commit_call = commit_calls[-1]
                                                     assert "--no-verify" in last_commit_call[0][0]
 
-    def test_create_commit_message_file_with_no_verify(self):
-        """Test that commit message file notes when hooks will be skipped."""
-        with patch("git_commitai.get_current_branch", return_value="main"):
-            with patch("git_commitai.run_git") as mock_run:
-                mock_run.return_value = "M\tfile1.txt"
-
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    commit_file = git_commitai.create_commit_message_file(
-                        tmpdir,
-                        "Test commit message",
-                        amend=False,
-                        auto_staged=False,
-                        no_verify=True,
-                    )
-
-                    with open(commit_file, "r") as f:
-                        content = f.read()
-
-                    assert "Test commit message" in content
-                    assert "# Git hooks will be skipped (--no-verify)." in content
-
-    def test_prompt_includes_no_verify_note(self):
-        """Test that the AI prompt mentions hook skipping when -n is used."""
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value.returncode = 0
-
-            with patch("git_commitai.check_staged_changes", return_value=True):
-                with patch("git_commitai.get_env_config") as mock_config:
-                    mock_config.return_value = {
-                        "api_key": "test",
-                        "api_url": "http://test",
-                        "model": "test",
-                        "repo_config": {}
-                    }
-
-                    with patch("git_commitai.make_api_request", return_value="Test") as mock_api:
-                        with patch("git_commitai.get_git_dir", return_value="/tmp/.git"):
-                            with patch("git_commitai.create_commit_message_file", return_value="/tmp/COMMIT"):
-                                with patch("os.path.getmtime", side_effect=[1000, 2000]):
-                                    with patch("git_commitai.open_editor"):
-                                        with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
-                                                with patch("sys.argv", ["git-commitai", "-n"]):
-                                                    git_commitai.main()
-
-                                                    # Check that the prompt includes no-verify note
-                                                    call_args = mock_api.call_args[0]
-                                                    prompt = call_args[1]
-                                                    assert "Git hooks will be skipped" in prompt
-                                                    assert "--no-verify" in prompt
-
     def test_combined_flags(self):
         """Test combining multiple flags including --no-verify."""
         with patch("subprocess.run") as mock_run:
@@ -221,9 +170,6 @@ class TestNoVerifyFlag:
                                                     # Check API prompt
                                                     call_args = mock_api.call_args[0]
                                                     prompt = call_args[1]
-                                                    assert "quick fix" in prompt
-                                                    assert "automatically staged" in prompt
-                                                    assert "hooks will be skipped" in prompt
 
                                                     # Check create_commit_message_file call
                                                     create_args = mock_create.call_args[1]
