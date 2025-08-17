@@ -1,13 +1,17 @@
 from unittest.mock import patch, mock_open
 import git_commitai
 
+
 class TestIsCommitMessageEmptyEdgeCases:
     """Test edge cases in is_commit_message_empty."""
 
     def test_commit_message_only_whitespace(self):
         """Test with only whitespace and empty lines."""
         content = "   \n\t\n  \n"
-        with patch("builtins.open", mock_open(read_data=content)):
+        m = mock_open(read_data=content)
+        # Ensure iteration over file yields the provided lines
+        m.return_value.__iter__.return_value = iter(content.splitlines(True))
+        with patch("builtins.open", m):
             assert git_commitai.is_commit_message_empty("fake_path")
 
     def test_commit_message_io_error(self):
