@@ -24,4 +24,7 @@ class TestDryRunEdgeCases:
                 git_commitai.show_dry_run_summary(args)
             assert exc_info.value.code == 1
 
+        # Verify we attempted the expected command (no extra flags from args)
+        assert mock_run.call_count == 1
+        assert mock_run.call_args[0][0] == ["git", "commit", "--dry-run"]
 
