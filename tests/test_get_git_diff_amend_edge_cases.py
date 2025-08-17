@@ -18,3 +18,11 @@ class TestGetGitDiffAmendEdgeCases:
             result = git_commitai.get_git_diff(amend=True)
             assert "diff --git" in result
 
+            # Verify result is wrapped in code fences (expected formatting)
+            assert result.startswith("```") and result.strip().endswith("```")
+
+            # Ensure we fell back to cached diff after exception on HEAD^
+            calls = [c.args[0] for c in mock_run.call_args_list]
+            assert any(cmd[:2] == ["rev-parse", "HEAD^"] for cmd in calls)
+            assert any(cmd == ["diff", "--cached"] for cmd in calls)
+
