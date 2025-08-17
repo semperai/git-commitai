@@ -1,0 +1,309 @@
+.\" Manpage for git-commitai
+.\" Contact: https://github.com/semperai/git-commitai
+.TH GIT-COMMITAI 1 "2025" "0.1.0" "Git Commit AI Manual"
+
+.SH NAME
+git-commitai \- Generate AI-powered git commit messages
+
+.SH SYNOPSIS
+.B git commitai
+[\fB\-a\fR|\fB\-\-all\fR]
+[\fB\-m\fR|\fB\-\-message\fR \fIcontext\fR]
+[\fB\-\-amend\fR]
+[\fB\-n\fR|\fB\-\-no\-verify\fR]
+[\fB\-v\fR|\fB\-\-verbose\fR]
+[\fB\-\-allow\-empty\fR]
+[\fB\-\-dry\-run\fR]
+[\fB\-\-author\fR \fIauthor\fR]
+[\fB\-\-date\fR \fIdate\fR]
+[\fB\-\-debug\fR]
+[\fB\-\-api\-key\fR \fIkey\fR]
+[\fB\-\-api\-url\fR \fIurl\fR]
+[\fB\-\-model\fR \fIname\fR]
+[\fB\-h\fR|\fB\-\-help\fR]
+[\fB\-\-version\fR]
+
+.SH DESCRIPTION
+.B git-commitai
+analyzes your staged git changes and generates meaningful, conventional commit messages using AI.
+It works as a drop-in replacement for \fBgit commit\fR, supporting many of the same flags while adding AI-powered message generation.
+
+The tool examines both the diff and full file contents to understand the context of your changes,
+then generates a commit message following Git best practices and any project-specific conventions defined in \fB.gitmessage\fR templates.
+
+.SH OPTIONS
+.SS Git Commit AI Specific Options
+.TP
+.BR \-m ", " \-\-message " " \fIcontext\fR
+Provide additional context about the commit to help the AI understand your intent.
+Unlike standard \fBgit commit\fR where this sets the entire message, in \fBgit-commitai\fR this provides context for AI message generation.
+
+.TP
+.BR \-\-debug
+Enable debug mode. Outputs detailed logging information to stderr for troubleshooting.
+
+.TP
+.BR \-\-api\-key " " \fIkey\fR
+Override the API key for this commit only.
+Overrides the \fBGIT_COMMIT_AI_KEY\fR environment variable.
+
+.TP
+.BR \-\-api\-url " " \fIurl\fR
+Override the API endpoint URL for this commit.
+Overrides the \fBGIT_COMMIT_AI_URL\fR environment variable.
+
+.TP
+.BR \-\-model " " \fIname\fR
+Override the AI model name for this commit.
+Overrides the \fBGIT_COMMIT_AI_MODEL\fR environment variable.
+
+.TP
+.BR \-\-version
+Display version information and exit.
+
+.SS Standard Git Commit Options
+.TP
+.BR \-a ", " \-\-all
+Automatically stage all tracked, modified files before committing.
+Cannot be used with \fB--amend\fR.
+
+.TP
+.BR \-\-amend
+Replace the tip of the current branch by creating a new commit with a new message.
+
+.TP
+.BR \-n ", " \-\-no\-verify
+Skip pre-commit and commit-msg hooks.
+
+.TP
+.BR \-v ", " \-\-verbose
+Show the diff of changes in the commit message editor.
+
+.TP
+.BR \-\-allow\-empty
+Allow creating a commit with no changes.
+
+.TP
+.BR \-\-dry\-run
+Don't actually create a commit, just show what would be committed.
+
+.TP
+.BR \-\-author " " \fIauthor\fR
+Override the commit author.
+Format: \fI"Name <email@example.com>"\fR
+
+.TP
+.BR \-\-date " " \fIdate\fR
+Override the author date used in the commit.
+Accepts various formats: ISO 8601, RFC 2822, Unix timestamp, relative dates.
+
+.TP
+.BR \-h ", " \-\-help
+Display help information and exit.
+
+.SH ENVIRONMENT
+.TP
+.B GIT_COMMIT_AI_KEY
+Your API key for the AI service (if your provider requires one).
+Can be overridden with \fB--api-key\fR.
+
+.TP
+.B GIT_COMMIT_AI_URL
+The API endpoint URL.
+Default: \fIhttps://openrouter.ai/api/v1/chat/completions\fR
+
+.TP
+.B GIT_COMMIT_AI_MODEL
+The AI model to use for generation.
+Default: \fIqwen/qwen3-coder\fR
+
+.TP
+.B GIT_EDITOR, EDITOR
+The editor to use for editing commit messages.
+Falls back to git's configured editor or \fBvi\fR.
+
+.SH EXAMPLES
+.SS Basic Usage
+.nf
+# Generate commit message for staged changes
+$ git add file.py
+$ git commitai
+
+# Provide context for better messages
+$ git commitai -m "Refactored auth system for JWT"
+
+# Auto-stage and commit tracked files
+$ git commitai -a
+
+# Preview without committing
+$ git commitai --dry-run
+.fi
+
+.SS Advanced Usage
+.nf
+# Amend the previous commit with a new AI-generated message
+$ git commitai --amend
+
+# Create an empty commit (e.g., for CI triggers)
+$ git commitai --allow-empty -m "Trigger deployment"
+
+# Skip git hooks
+$ git commitai -n
+
+# Show diff in editor
+$ git commitai -v
+
+# Override author information
+$ git commitai --author "Jane Doe <jane@example.com>"
+
+# Set a specific commit date
+$ git commitai --date "2024-01-01 12:00:00"
+
+# Use relative date
+$ git commitai --date "2 weeks ago"
+
+# Combine author and date overrides
+$ git commitai --author "Bot <bot@ci.com>" --date "@1705329000"
+.fi
+
+.SS Using Different Models
+.nf
+# Use a different model for this commit
+$ git commitai --model "openai/gpt-4o"
+
+# Use a local LLM
+$ git commitai --api-url "http://localhost:11434/v1/chat/completions" \\
+              --model "codellama"
+.fi
+
+.SS Using Templates
+.nf
+# Create a project-specific commit template
+$ cat > .gitmessage << 'EOF'
+# Format: <type>(<scope>): <subject>
+# Types: feat, fix, docs, style, refactor, test, chore
+EOF
+
+# Git Commit AI will use this template automatically
+$ git add .
+$ git commitai
+# Generated message follows template format
+.fi
+
+.SH CONFIGURATION FILES
+.SS .gitcommitai File
+You can customize the AI prompt used for generating commit messages by creating a \fB.gitcommitai\fR file in your repository root.
+
+The file can optionally start with a model specification:
+.nf
+model: gpt-4
+.fi
+
+Then include your prompt template with placeholders:
+.IP \(bu 2
+\fB{CONTEXT}\fR - User-provided context via -m flag
+.IP \(bu 2
+\fB{DIFF}\fR - The git diff of changes
+.IP \(bu 2
+\fB{FILES}\fR - The modified files with their content
+.IP \(bu 2
+\fB{GITMESSAGE}\fR - Content from .gitmessage template if exists
+
+.SS Configuration Precedence
+For the model setting, the precedence order is:
+.IP 1. 4
+CLI flag (\fB--model\fR)
+.IP 2. 4
+Environment variable (\fBGIT_COMMIT_AI_MODEL\fR)
+.IP 3. 4
+\fB.gitcommitai\fR file model specification
+.IP 4. 4
+Default (\fIqwen/qwen3-coder\fR)
+
+.SS Example .gitcommitai File
+.nf
+model: gpt-4
+
+You are a commit message generator for our project.
+Use conventional commits format.
+
+Context: {CONTEXT}
+Changes: {DIFF}
+Files: {FILES}
+
+Generate the commit message:
+.fi
+
+.SH TEMPLATE FILES
+Git Commit AI automatically detects and uses \fB.gitmessage\fR template files to understand your project's commit conventions.
+
+.SS Precedence Order
+The tool looks for templates in this order (first found wins):
+
+.IP 1. 4
+\fBRepository template\fR: \fB.gitmessage\fR in your repository root
+.IP 2. 4
+\fBGit config template\fR: Set via \fBgit config commit.template\fR
+.IP 3. 4
+\fBGlobal template\fR: \fB~/.gitmessage\fR in your home directory
+
+.P
+Repository-specific \fB.gitmessage\fR files take precedence over configured templates.
+This ensures teams can enforce project-specific conventions by including a \fB.gitmessage\fR file in their repository.
+
+When a template is found, it's used as additional context to help generate messages that follow your project's conventions.
+
+.SS Template Configuration Examples
+.nf
+# Create a repository-specific template
+$ cat > .gitmessage << 'EOF'
+# Format: <type>(<scope>): <subject>
+# Types: feat, fix, docs, style, refactor, test, chore
+EOF
+
+# Configure a template via git config
+$ git config --global commit.template ~/.my-template
+$ git config commit.template .github/commit-template
+
+# Create a global fallback template
+$ cp template.txt ~/.gitmessage
+.fi
+
+.SH FILES
+.TP
+.B .gitmessage
+Project-specific or global commit message template file.
+Repository \fB.gitmessage\fR files take precedence over all other templates.
+
+.TP
+.B .gitcommitai
+Project-specific AI prompt configuration file.
+Can include custom prompt templates with placeholders for context, diff, and files.
+
+.SH EXIT STATUS
+.TP
+.B 0
+Successful commit or successful dry-run
+
+.TP
+.B 1
+General error or commit aborted
+
+.TP
+.B 128
+Not in a git repository
+
+.SH SEE ALSO
+.BR git (1),
+.BR git-commit (1)
+
+.SH BUGS
+Report bugs at: https://github.com/semperai/git-commitai/issues
+
+.SH AUTHOR
+Semper AI (https://github.com/semperai)
+
+.SH COPYRIGHT
+Copyright (C) 2025 Semper AI. MIT License.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.

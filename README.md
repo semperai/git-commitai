@@ -12,11 +12,11 @@
     <strong>Intelligent commit messages powered by AI</strong>
     <br />
     <br />
-    <a href="https://github.com/semperai/git-commitai#features">Features</a>
+    <a href="#quick-install">Quick Install</a>
     ·
-    <a href="https://github.com/semperai/git-commitai#installation">Installation</a>
+    <a href="#usage">Usage</a>
     ·
-    <a href="https://github.com/semperai/git-commitai#usage">Usage</a>
+    <a href="#documentation">Documentation</a>
     ·
     <a href="https://github.com/semperai/git-commitai/issues">Report Bug</a>
   </p>
@@ -25,545 +25,539 @@
   <!-- Badges -->
   <p>
     <a href="https://github.com/semperai/git-commitai/stargazers">
-      <img src="https://img.shields.io/github/stars/semperai/git-commitai?style=for-the-badge" alt="Stars" />
+      <img src="https://img.shields.io/github/stars/semperai/git-commitai?style=flat" alt="Stars" />
     </a>
     <a href="https://github.com/semperai/git-commitai/actions">
-      <img src="https://img.shields.io/github/actions/workflow/status/semperai/git-commitai/tests.yml?style=for-the-badge&label=Tests" alt="Tests" />
+      <img src="https://img.shields.io/github/actions/workflow/status/semperai/git-commitai/test.yml?style=flat&label=Tests" alt="Tests" />
     </a>
-    <a href="https://codecov.io/gh/semperai/git-commitai">
-      <img src="https://img.shields.io/codecov/c/github/semperai/git-commitai?style=for-the-badge" alt="Coverage" />
+    <a href="https://codecov.io/gh/semperai/git-commitai" >
+      <img src="https://codecov.io/gh/semperai/git-commitai/branch/master/graph/badge.svg?token=DA7BBXQ0LW"/>
     </a>
-    <a href="https://github.com/semperai/git-commitai/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/semperai/git-commitai?style=for-the-badge" alt="License" />
+    <a href="https://github.com/semperai/git-commitai/releases">
+      <img src="https://img.shields.io/github/v/release/semperai/git-commitai?style=flat" alt="Release" />
     </a>
-  </p>
-
-  <!-- Language and compatibility badges -->
-  <p>
-    <a href="https://www.python.org/downloads/">
-      <img src="https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+    <a href="https://github.com/semperai/git-commitai/blob/master/LICENSE">
+      <img src="https://img.shields.io/github/license/semperai/git-commitai?style=flat" alt="License" />
     </a>
-    <a href="https://github.com/psf/black">
-      <img src="https://img.shields.io/badge/Code%20Style-Black-000000?style=for-the-badge&logo=python&logoColor=white" alt="Code style" />
+    <a href="https://github.com/semperai/git-commitai">
+      <img src="https://img.shields.io/badge/python-3.8+-blue?style=flat" alt="Python" />
     </a>
-    <a href="https://git-scm.com/">
-      <img src="https://img.shields.io/badge/Git-2.0+-F05032?style=for-the-badge&logo=git&logoColor=white" alt="Git" />
-    </a>
-  </p>
-</div>
-
-<br />
-
----
-
-<div align="center">
-  <p align="center">
-    An intelligent git commit message generator that uses AI to analyze your staged changes and generate meaningful, conventional commit messages. Works seamlessly with your existing git workflow.
   </p>
 </div>
 
 ---
 
-## ✨ Features
+**Git Commit AI** analyzes your staged changes and generates meaningful, conventional commit messages using AI. Works seamlessly with your existing git workflow - just use `git commitai` instead of `git commit`.
 
-- 🤖 **AI-powered commit message generation** - Analyzes your code changes and generates descriptive commit messages
-- 📝 **Works like native `git commit`** - Same workflow with support for git commit flags
-- 🔧 **Provider agnostic** - Works with OpenAI, OpenRouter, Anthropic, local LLMs, or any OpenAI-compatible API
-- ✏️ **Full editor integration** - Uses your configured git editor for message editing
-- 📊 **Context aware** - Includes both the diff and full file contents for better understanding
+## 🚀 Quick Install
 
-## 📦 Installation
+### Linux/macOS/WSL
 
-### Quick Install
+Run this single command to install and set up everything:
 
-1. Download the script:
 ```bash
-curl -O https://github.com/semperai/git-commitai/blob/master/git_commitai.py
+curl -sSL https://raw.githubusercontent.com/semperai/git-commitai/master/install.sh | bash
+```
+
+### Windows
+
+Run in PowerShell:
+
+```powershell
+# Download and run the installer
+irm https://raw.githubusercontent.com/semperai/git-commitai/master/install.ps1 | iex
+
+# Or download first, then run
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/semperai/git-commitai/master/install.ps1 -OutFile install.ps1
+.\install.ps1
+```
+
+The installer will:
+- ✅ Download and install git-commitai
+- ✅ Set up the `git commitai` command
+- ✅ Install the man page for `git commitai --help` (Unix/Linux)
+- ✅ Guide you through API configuration
+- ✅ Add to your PATH automatically
+
+### Alternative Installation Methods
+
+<details>
+<summary>Manual installation from Git</summary>
+
+```bash
+# Clone the repository
+git clone https://github.com/semperai/git-commitai.git
+cd git-commitai
+
+# Make the script executable
 chmod +x git_commitai.py
+
+# Option 1: Copy to your PATH
+sudo cp git_commitai.py /usr/local/bin/git-commitai
+# Or for user installation:
+mkdir -p ~/.local/bin
+cp git_commitai.py ~/.local/bin/git-commitai
+
+# Option 2: Set up git alias directly
+git config --global alias.commitai '!python3 '"$(pwd)"'/git_commitai.py'
+
+
+sudo cp git-commitai.1 /usr/local/share/man/man1/
+sudo mandb  # Update man database on Linux
+
+# Set up environment variables (add to ~/.bashrc or ~/.zshrc)
+export GIT_COMMIT_AI_KEY="your-api-key"
+export GIT_COMMIT_AI_URL="https://openrouter.ai/api/v1/chat/completions"
+export GIT_COMMIT_AI_MODEL="qwen/qwen3-coder"
 ```
+</details>
 
-2. Install as a git command (choose one method):
+<details>
+<summary>Development installation</summary>
 
-#### Method 1: Git Alias (Simplest)
 ```bash
-git config --global alias.commitai '!python3 '"$(pwd)/git_commitai.py"
-```
-Now you can use: `git commitai`
+# Clone and set up for development
+git clone https://github.com/semperai/git-commitai.git
+cd git-commitai
 
-#### Method 2: Add to PATH with wrapper script
-```bash
-# Create a wrapper script
-echo '#!/bin/bash\npython3 /path/to/git_commitai.py "$@"' > git-commitai
-chmod +x git-commitai
-sudo mv git-commitai /usr/local/bin/
-```
-Now you can use: `git commitai`
+# Create virtual environment (optional but recommended)
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-#### Method 3: Direct execution
-```bash
-# Just run directly
-python3 git_commitai.py
-# Or make it executable
-chmod +x git_commitai.py
-./git_commitai.py
+# Install development dependencies
+pip install -r requirements.txt
+
+# Run tests
+pytest
+
+# Create git alias pointing to your dev version
+git config --global alias.commitai '!python3 '"$(pwd)"'/git_commitai.py'
 ```
+</details>
 
 ## ⚙️ Configuration
 
-Set up your environment variables based on your AI provider:
+After installation, the script will guide you through setting up your API credentials. You can also configure manually:
 
-### OpenRouter (Recommended - Access to many models)
 ```bash
+# Example with OpenRouter (recommended)
 export GIT_COMMIT_AI_KEY="sk-or-v1-..."
 export GIT_COMMIT_AI_URL="https://openrouter.ai/api/v1/chat/completions"
-export GIT_COMMIT_AI_MODEL="openai/gpt-4o"  # or "anthropic/claude-3.5-sonnet" etc.
+export GIT_COMMIT_AI_MODEL="qwen/qwen3-coder"
 ```
 
-Add to your `~/.bashrc` or `~/.zshrc` to make permanent:
+Add these to your `~/.bashrc` or `~/.zshrc` to make them permanent.
+
+You can also override these settings per-command using CLI flags:
+
 ```bash
-echo 'export GIT_COMMIT_AI_KEY="sk-or-v1-..."' >> ~/.bashrc
-echo 'export GIT_COMMIT_AI_URL="https://openrouter.ai/api/v1/chat/completions"' >> ~/.bashrc
-echo 'export GIT_COMMIT_AI_MODEL="openai/gpt-4o"' >> ~/.bashrc
+# Use a different model for a specific commit
+git commitai --model "gpt-4o" --api-key "sk-..."
+
+# Test with a local LLM
+git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "qwen2.5-coder:7b"
 ```
 
-### Other Providers
+### Running with Local LLMs (Ollama)
+
+For enhanced privacy and offline usage, you can run Git Commit AI with local LLMs using Ollama:
 
 <details>
-<summary>OpenAI</summary>
+<summary>Setting up Ollama</summary>
+
+#### 1. Install Ollama
 
 ```bash
-export GIT_COMMIT_AI_KEY="sk-..."
-export GIT_COMMIT_AI_URL="https://api.openai.com/v1/chat/completions"
-export GIT_COMMIT_AI_MODEL="gpt-4o"
+# macOS
+brew install ollama
+
+# Linux
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Windows
+# Download from https://ollama.ai/download
 ```
-</details>
 
-<details>
-<summary>Anthropic Claude</summary>
+#### 2. Start Ollama service
 
 ```bash
-export GIT_COMMIT_AI_KEY="sk-ant-..."
-export GIT_COMMIT_AI_URL="https://api.anthropic.com/v1/messages"
-export GIT_COMMIT_AI_MODEL="claude-3-opus-20240229"
+# Start Ollama (if not already running)
+ollama serve
+
+# Pull a code-optimized model
+ollama pull qwen2.5-coder:7b
+
+# Verify the model is downloaded
+ollama list
 ```
-</details>
 
-<details>
-<summary>Local LLMs (Ollama)</summary>
+#### 3. Configure Git Commit AI for Ollama
 
 ```bash
-export GIT_COMMIT_AI_KEY="not-needed"
+# Set environment variables for Ollama
 export GIT_COMMIT_AI_URL="http://localhost:11434/v1/chat/completions"
-export GIT_COMMIT_AI_MODEL="llama2"
-```
-</details>
+export GIT_COMMIT_AI_MODEL="qwen2.5-coder:7b"
+export GIT_COMMIT_AI_KEY="not-needed"
 
-<details>
-<summary>Azure OpenAI</summary>
-
-```bash
-export GIT_COMMIT_AI_KEY="your-azure-key"
-export GIT_COMMIT_AI_URL="https://your-resource.openai.azure.com/openai/deployments/your-deployment/chat/completions?api-version=2023-05-15"
-export GIT_COMMIT_AI_MODEL="gpt-4"
-```
-</details>
-
-## 🚀 Usage
-
-### Command Line Options
-
-```bash
-git-commitai [options]
-
-Options:
-  -m, --message TEXT    Additional context about the commit
-  -a, --all            Automatically stage all tracked, modified files
-  -n, --no-verify      Skip pre-commit and commit-msg hooks
-  -v, --verbose        Show diff of changes in the editor
-  --amend              Amend the previous commit
-  --version            Show version information
-  -h, --help           Show help message
+# Add to ~/.bashrc or ~/.zshrc to make permanent
 ```
 
-### Basic Usage
+#### 4. Test the setup
+
 ```bash
-# Stage your changes
+# Make a test commit
 git add .
+git commitai --debug  # Use debug to see the API calls
 
-# Generate commit message
+# Or use per-command overrides without setting env vars
+git commitai --api-url "http://localhost:11434/v1/chat/completions" \
+             --model "qwen2.5-coder:7b" \
+             --api-key "not-needed"
+```
+
+#### Troubleshooting
+
+- **Connection refused**: Make sure Ollama is running (`ollama serve`)
+- **Model not found**: Pull the model first (`ollama pull qwen2.5-coder:7b`)
+- **Slow generation**: Try a smaller model like `llama3.2:3b` or upgrade your hardware
+- **Out of memory**: Use a smaller model or increase Ollama's memory limit
+
+#### Performance Tips
+
+- Models with "instruct" or "chat" variants typically work better for commit messages
+- Code-specific models like `qwen2.5-coder` understand diffs better
+- Run `ollama serve` in the background or as a service for convenience
+- For faster responses on limited hardware, consider `qwen2.5-coder:3b`
+
+</details>
+
+### Commit Message Templates (.gitmessage)
+
+Git Commit AI automatically reads and uses your `.gitmessage` template files to understand your project's commit conventions. This helps generate messages that match your team's style guide.
+
+The tool looks for templates in this **precedence order** (first found wins):
+
+1. **Repository template**: `.gitmessage` in your repository root
+2. **Git config template**: Set via `git config commit.template`
+3. **Global template**: `~/.gitmessage` in your home directory
+
+> **Note**: Repository-specific `.gitmessage` files take precedence over configured templates. This ensures teams can enforce project-specific conventions by including a `.gitmessage` file in their repository, regardless of individual developer configurations.
+
+#### Setting Up a Template
+
+Create a `.gitmessage` file with your project's commit guidelines:
+
+```bash
+# Create a repository-specific template
+cat > .gitmessage << 'EOF'
+# Format: <type>(<scope>): <subject>
+#
+# <type> must be one of:
+#   feat: A new feature
+#   fix: A bug fix
+#   docs: Documentation changes
+#   style: Code style changes (formatting, semicolons, etc)
+#   refactor: Code refactoring without adding features or fixing bugs
+#   test: Adding or updating tests
+#   chore: Maintenance tasks, dependency updates, etc
+#
+# <scope> is optional and indicates the module affected
+#
+# Example: feat(auth): Add OAuth2 login support
+#
+# The body should explain the motivation for the change
+EOF
+
+# Or configure a template via git config
+git config --global commit.template ~/.gitmessage
+git config commit.template .github/commit-template  # Repository-specific config
+
+# Or use a global fallback template
+cp .gitmessage ~/.gitmessage
+```
+
+When a template is found, Git Commit AI uses it as additional context to generate messages that follow your conventions while still adhering to Git best practices.
+
+#### Template Precedence Example
+
+If you have:
+- `.gitmessage` in your repository root
+- A template configured via `git config commit.template`
+- `~/.gitmessage` in your home directory
+
+Git Commit AI will use the `.gitmessage` from your repository root, ignoring the others. This ensures project-specific conventions always take precedence.
+
+### Custom AI Prompts (.gitcommitai)
+
+You can customize the AI prompt used for generating commit messages by creating a `.gitcommitai` file in your repository root.
+
+#### Basic Configuration
+
+The `.gitcommitai` file can optionally start with a model specification, followed by your custom prompt template:
+
+```bash
+# Create a .gitcommitai file with custom prompt
+cat > .gitcommitai << 'EOF'
+model: gpt-4
+
+You are a commit message generator for our project.
+Use conventional commits format.
+
+Context: {CONTEXT}
+Changes: {DIFF}
+Files: {FILES}
+
+Generate the commit message:
+EOF
+```
+
+#### Available Placeholders
+
+Your custom prompt template can use these placeholders:
+
+- `{CONTEXT}` - User-provided context via `-m` flag
+- `{DIFF}` - The git diff of changes
+- `{FILES}` - The modified files with their content
+- `{GITMESSAGE}` - Content from .gitmessage template if exists
+
+#### Configuration Precedence
+
+For model selection, the precedence is:
+1. CLI flag (`--model`)
+2. Environment variable (`GIT_COMMIT_AI_MODEL`)
+3. `.gitcommitai` file model specification
+4. Default (`qwen/qwen3-coder`)
+
+## 📖 Usage
+
+```bash
+# Basic usage - just like git commit!
+git add .
 git commitai
 
-# The AI will analyze your changes and open your editor with a suggested message
-# Save and exit to commit, or quit without saving to abort
-```
+# With context for better messages
+git commitai -m "Refactored auth system for JWT"
 
-### Auto-stage and Commit (`-a` flag)
-```bash
-# Make changes to tracked files
-vim existing-file.py
-
-# Auto-stage all tracked changes and commit
+# Auto-stage tracked files
 git commitai -a
 
-# With context
-git commitai -a -m "Refactored error handling"
+# Preview without committing
+git commitai --dry-run
 
-# Note: -a only stages tracked files, not new untracked files
-# For new files, you still need: git add new-file.py
+# Override API settings for this commit
+git commitai --model "claude-3.5-sonnet" --api-key "sk-ant-..."
+
+# Debug mode for troubleshooting
+git commitai --debug
+
+# See all options
+git commitai --help
 ```
 
-### Skip Hooks (`-n` flag)
+## 📚 Documentation
+
+### Get Help
 ```bash
-# Skip pre-commit hooks (useful for WIP commits)
-git commitai -n
-
-# Skip hooks with auto-staging
-git commitai -a -n
-
-# Emergency fix - bypass all checks
-git commitai -a -n -m "Emergency production fix"
+man git-commitai
 ```
 
-### Verbose Mode (`-v` flag)
+### Git Commit AI Specific Commands
+
+These commands are unique to `git commitai` and not found in standard `git commit`:
+
+| Flag | Description | Purpose |
+|------|-------------|---------|
+| `-m, --message <context>` | Provide context for AI | **Modified behavior**: Unlike `git commit` where this sets the entire message, in `git commitai` this provides context to help the AI understand your intent |
+| `--debug` | Enable debug logging | Outputs debug information to stderr for troubleshooting. Shows git commands, API requests, and decision points |
+| `--api-key <key>` | Override API key | Temporarily use a different API key for this commit only. Overrides `GIT_COMMIT_AI_KEY` environment variable |
+| `--api-url <url>` | Override API endpoint | Use a different API endpoint for this commit. Useful for testing different providers or local models |
+| `--model <name>` | Override model name | Use a different AI model for this commit. Overrides `GIT_COMMIT_AI_MODEL` environment variable |
+
+### Standard Git Commit Commands Support
+
+The following table shows all standard `git commit` flags and their support status in `git commitai`:
+
+| Flag | Description | Status |
+|------|-------------|--------|
+| `-a, --all` | Auto-stage all tracked modified files | ✅ **Supported** |
+| `--interactive` | Interactively add files | ❌ Not supported |
+| `--patch` | Interactively add hunks of patch | ❌ Not supported |
+| `-s, --signoff` | Add Signed-off-by trailer | ❌ Not supported |
+| `-v, --verbose` | Show diff in commit message editor | ✅ **Supported** |
+| `-u<mode>, --untracked-files[=<mode>]` | Show untracked files | ❌ Not supported |
+| `--amend` | Amend the previous commit | ✅ **Supported** |
+| `--dry-run` | Don't actually commit, just show what would be committed | ✅ **Supported** |
+| `-c, --reedit-message=<commit>` | Reuse and edit message from specified commit | ❌ Not supported |
+| `-C, --reuse-message=<commit>` | Reuse message from specified commit | ❌ Not supported |
+| `--squash=<commit>` | Construct commit for squashing | ❌ Not supported |
+| `--fixup=<commit>` | Construct commit for autosquash rebase | ❌ Not supported |
+| `-F, --file=<file>` | Read commit message from file | ❌ Not supported |
+| `--reset-author` | Reset author information | ❌ Not supported |
+| `--allow-empty` | Allow empty commits | ✅ **Supported** |
+| `--allow-empty-message` | Allow commits with empty message | ❌ Not supported |
+| `--no-verify, -n` | Skip pre-commit and commit-msg hooks | ✅ **Supported** |
+| `-e, --edit` | Force edit of commit message | ❌ Not supported |
+| `--author=<author>` | Override author information | ✅ **Supported** |
+| `--date=<date>` | Override author date | ✅ **Supported** |
+| `--cleanup=<mode>` | Set commit message cleanup mode | ❌ Not supported |
+| `--status` | Include git status in commit editor | ❌ Not supported |
+| `--no-status` | Don't include git status in commit editor | ❌ Not supported |
+| `-i, --include` | Stage specified files in addition to staged | ❌ Not supported |
+| `-o, --only` | Commit only specified files | ❌ Not supported |
+| `--pathspec-from-file=<file>` | Read pathspec from file | ❌ Not supported |
+| `--pathspec-file-nul` | NUL-separated pathspec file | ❌ Not supported |
+| `--trailer <token>[(=\|:)<value>]` | Add trailers to commit message | ❌ Not supported |
+| `-S[<keyid>], --gpg-sign[=<keyid>]` | GPG-sign commit | ❌ Not supported |
+| `--no-gpg-sign` | Don't GPG-sign commit | ❌ Not supported |
+| `--` | Separate paths from options | ❌ Not supported |
+| `<pathspec>...` | Commit only specified paths | ❌ Not supported |
+
+#### Legend
+- ✅ **Supported** - Fully functional in git-commitai
+- ❌ Not supported - Not yet implemented
+
+### Supported Providers
+
+- **OpenRouter** (Recommended) - Access to Claude, GPT-4, and many models
+- **Local LLMs** (Recommended) - Ollama, LM Studio
+- **OpenAI** - GPT-4, GPT-3.5
+- **Anthropic** - Claude models
+- **Any OpenAI-compatible API**
+
+## ✨ Features
+
+- 🤖 **AI-powered commit messages** - Analyzes your code changes and generates descriptive messages
+- 📝 **Drop-in replacement** - Use `git commitai` just like `git commit` with the same flags
+- 🔧 **Provider agnostic** - Works with OpenAI, Anthropic, local LLMs, or any compatible API
+- 📖 **Full documentation** - Comprehensive man page with `git commitai --help`
+- ⚡ **Smart context** - Understands both diffs and full file contents
+- 🎯 **Git native** - Respects your git editor, hooks, and workflow
+- 🐛 **Debug mode** - Built-in debugging for troubleshooting issues
+- 🔄 **CLI overrides** - Override API settings per-command for testing and flexibility
+- 📋 **Template support** - Automatically uses your `.gitmessage` templates for project-specific conventions
+- 🎨 **Custom prompts** - Customize AI behavior with `.gitcommitai` configuration
+
+## 🧪 Examples
+
 ```bash
-# See the full diff in your editor while writing the message
+# Stage changes and generate commit message
+git add src/
+git commitai
+
+# Preview what would be committed without actually committing
+git commitai --dry-run
+
+# Quick fix with auto-staging
+vim buggy-file.js
+git commitai -a -m "Fixed null pointer exception"
+
+# Work in progress (skip hooks)
+git commitai -a -n -m "WIP: implementing feature"
+
+# Amend last commit with better message
+git commitai --amend
+
+# Trigger CI/CD with empty commit
+git commitai --allow-empty -m "Trigger deployment"
+
+# Review changes while committing
 git commitai -v
 
-# Review everything: auto-stage and show diff
-git commitai -a -v
+# Override author information
+git commitai --author "John Doe <john@example.com>"
 
-# Maximum visibility
-git commitai -a -v -m "Major refactor"
+# Override commit date
+git commitai --date "2024-01-01 12:00:00"
+
+# Test with a different model
+git commitai --model "gpt-4o" --api-key "sk-..."
+
+# Use local LLM for sensitive code
+git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "codellama"
+
+# Preview with dry-run and debug
+git commitai --dry-run --debug 2>&1 | tee preview.log
+
+# Debug mode for troubleshooting (outputs to stderr)
+git commitai --debug 2> debug.log
+git commitai --debug -a -m "Testing auto-stage" 2>&1 | tee debug.log
+
+# Combine CLI overrides with debug
+git commitai --debug --model "claude-3.5-sonnet" --api-key "sk-ant-..."
 ```
 
-### With Additional Context
+### Using with .gitmessage Templates
+
 ```bash
-git commitai -m "This refactors the auth system to use JWT tokens instead of sessions"
-```
+# Create a project-specific template
+cat > .gitmessage << 'EOF'
+# Type: feat|fix|docs|style|refactor|test|chore
+# Scope: (optional) affected module
+#
+# Remember: Use imperative mood in the subject line
+EOF
 
-### Amending Previous Commits
-```bash
-# Amend the last commit with a new AI-generated message
-git commitai --amend
-
-# Amend with additional context for the AI
-git commitai --amend -m "Fixed the race condition and improved error handling"
-
-# Stage new changes and amend them into the previous commit
-git add fixed-file.js
-git commitai --amend
-```
-
-### Combining Flags
-```bash
-# Auto-stage, skip hooks, show diff
-git commitai -a -n -v
-
-# Auto-stage with context
-git commitai -a -m "Performance improvements"
-
-# Verbose amend
-git commitai --amend -v
-
-# Skip hooks for amend
-git commitai --amend -n
-```
-
-## 📚 Workflow Examples
-
-### Standard Workflow
-```bash
-# Make some changes
-echo "console.log('Hello World')" >> app.js
-git add app.js
-
-# Generate AI commit message
+# Git Commit AI will automatically detect and use this template
+git add .
 git commitai
 
-# Your editor opens with something like:
-# Add console log statement to app.js
-#
-# Added a Hello World console output for debugging purposes.
-# This is a temporary addition for testing the application startup.
+# The AI will generate messages following your template format
+# Example output: "feat(auth): Add JWT token validation"
+
+# Note: This .gitmessage in your repo will override any configured templates
+# or global ~/.gitmessage, ensuring team conventions are followed
 ```
 
-### Quick Fix Workflow
+## 🐛 Debugging
+
+If you encounter issues, use the `--debug` flag to enable detailed logging to stderr:
+
 ```bash
-# Fix a bug quickly
-vim buggy-file.js
+# Enable debug mode (outputs to stderr)
+git commitai --debug
 
-# Auto-stage and commit with context, skip hooks
-git commitai -a -n -m "Hotfix for null pointer exception"
+# Capture debug output to a file
+git commitai --debug 2> debug.log
+
+# View debug output on screen and save to file
+git commitai --debug 2>&1 | tee debug.log
+
+# Debug with other flags
+git commitai --debug -a -v 2> debug.log
+
+# Debug with API overrides
+git commitai --debug --model "gpt-4" --api-url "https://api.openai.com/v1/chat/completions" 2> debug.log
 ```
 
-### Review Before Commit Workflow
-```bash
-# Make multiple changes
-vim file1.py file2.py file3.py
+The debug output includes:
+- All git commands executed
+- API request/response details
+- File processing information
+- Configuration and environment details (including CLI overrides)
+- Template file detection and loading (shows which template was chosen and why)
+- Error messages and stack traces
 
-# Auto-stage and review all changes
-git commitai -a -v
-
-# Editor shows the AI message plus the full diff below
-# Review everything, adjust message if needed, then commit
-```
-
-### WIP (Work in Progress) Workflow
-```bash
-# Save work in progress, bypassing checks
-git commitai -a -n -m "WIP: Implementing new feature"
-
-# Later, amend with proper commit
-git commitai --amend -m "Implement user profile feature"
-```
-
-## 🎯 Flag Details
-
-### `-a, --all` - Auto-stage Tracked Files
-- Automatically runs `git add -u` before committing
-- Only stages **tracked** files that have been modified or deleted
-- Does **NOT** stage untracked (new) files
-- Equivalent to `git commit -a`
-- Cannot be used with `--amend`
-
-### `-n, --no-verify` - Skip Git Hooks
-- Bypasses pre-commit and commit-msg hooks
-- Useful for:
-  - WIP (Work in Progress) commits
-  - Emergency hotfixes
-  - Temporarily broken code
-  - Skipping time-consuming checks
-- Use with caution - hooks exist for a reason!
-
-### `-v, --verbose` - Show Diff in Editor
-- Displays the full diff below the commit message
-- Diff appears after a scissors line (`>8`)
-- Everything below the scissors is ignored by git
-- Helps you review changes while writing the message
-- Especially useful for large or complex commits
-
-### `--amend` - Modify Previous Commit
-- Replaces the last commit with a new one
-- Generates new AI message based on all changes
-- Includes both previous commit changes and any new staged changes
-- Cannot be used with `-a` flag
-
-## 🛠️ How It Works
-
-1. **Analyzes staged changes**: Reads `git diff --cached` to understand what changed
-2. **Detects file types**: Identifies and handles binary files appropriately
-3. **Gathers context**: Includes full file contents for better understanding
-4. **Calls AI API**: Sends the context to your configured AI model
-5. **Opens editor**: Places the generated message in your git editor
-6. **Applies flags**: Handles auto-staging, hook skipping, and verbose mode
-7. **Commits or aborts**: Just like regular `git commit` - save to commit, quit to abort
-
-## 💡 Tips & Best Practices
-
-### Commit Message Quality
-- **Better results with context**: Use `-m` flag to explain WHY you made changes
-- **Model selection**: GPT-4 or Claude models generally produce better commit messages
-- **Cost optimization**: For simple changes, smaller models like `gpt-3.5-turbo` work well
-
-### Workflow Tips
-- **Review large changes**: Use `-v` flag for complex commits to review while writing
-- **Quick fixes**: Combine `-a -n` for rapid iterations during development
-- **Amending commits**: Use `--amend` to fix the last commit instead of creating new ones
-- **WIP commits**: Use `-n -m "WIP: ..."` for work-in-progress saves
-
-### Editor Shortcuts
-- **vim**: `:wq` to save and commit, `:q!` to abort
-- **nano**: `Ctrl+O, Enter, Ctrl+X` to save, `Ctrl+X` to abort
-- **VS Code**: `Ctrl+S, Ctrl+W` to save, close without saving to abort
-- **emacs**: `Ctrl+X Ctrl+S, Ctrl+X Ctrl+C` to save and exit
-
-## 🔧 Troubleshooting
-
-### "API key not set" error
-Make sure you've exported your API key:
-```bash
-export GIT_COMMIT_AI_KEY="your-key-here"
-```
-
-### "No staged changes" error
-Stage your changes first or use the `-a` flag:
-```bash
-git add .
-# OR
-git commitai -a
-```
-
-### "Nothing to amend" error
-This occurs when trying to use `--amend` with no previous commit. Make a normal commit first:
-```bash
-git commitai  # without --amend
-```
-
-### "Cannot use -a/--all with --amend" error
-The `-a` flag doesn't work with `--amend`. Stage changes manually:
-```bash
-git add .
-git commitai --amend
-```
-
-### Empty response from API
-- Check your API key is valid
-- Verify the API URL is correct for your provider
-- Ensure the model name is supported by your provider
-
-### Script not found when using `git commitai`
-Make sure the script is in your PATH or properly aliased:
-```bash
-which git-commitai  # Should show the path
-git config --get alias.commitai  # Should show the alias if using that method
-```
-
-## 🔬 Advanced Configuration
-
-### Using with different branches
-You can set different models for different projects:
-```bash
-# In your project directory
-git config core.commitai.model "gpt-4o"  # Premium model for important project
-# In another project
-git config core.commitai.model "gpt-3.5-turbo"  # Cheaper model for personal project
-```
-
-Then update the script to check git config:
-```python
-MODEL="${GIT_COMMIT_AI_MODEL:-$(git config core.commitai.model || echo 'gpt-4o')}"
-```
-
-### Custom System Prompts
-You can modify the prompt in the script to match your team's commit message conventions:
-```python
-prompt = "Generate a conventional commit message (feat/fix/docs/style/refactor/test/chore)..."
-```
-
-### Hook Integration
-Create a prepare-commit-msg hook to always use git-commitai:
-```bash
-#!/bin/sh
-# .git/hooks/prepare-commit-msg
-if [ -z "$2" ]; then
-  git-commitai
-fi
-```
+When reporting bugs, please include relevant portions of the debug output.
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](#development) below.
+We welcome contributions! See our [Contributing Guide](CONTRIBUTING.md) for details.
 
-### Development
-
-#### Setting Up Development Environment
-
-1. **Clone the repository:**
 ```bash
+# Clone the repository
 git clone https://github.com/semperai/git-commitai.git
 cd git-commitai
-```
-
-2. **Create a virtual environment (recommended):**
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. **Install development dependencies:**
-```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows use `venv\Scripts\activate`
 pip install -r requirements.txt
+pytest
+./install.sh
 ```
 
-#### Running Tests
+## 📄 License
 
-```bash
-# Run all tests
-make test
+MIT License - see [LICENSE](LICENSE) file for details.
 
-# Run with coverage report
-make coverage
+## 🌟 Star History
 
-# Run specific test class
-pytest test_git_commitai.py::TestAutoStageFlag -v
-
-# Run specific test
-pytest test_git_commitai.py::TestGitStatus::test_parse_porcelain_modified_files -v
-
-# Generate HTML coverage report
-pytest test_git_commitai.py --cov=git_commitai --cov-report=html
-# Open htmlcov/index.html in your browser
-```
-
-#### Code Quality
-
-```bash
-# Format code with black
-black git_commitai.py test_git_commitai.py
-
-# Check formatting without changing files
-black --check git_commitai.py test_git_commitai.py
-
-# Run linting
-flake8 git_commitai.py test_git_commitai.py --max-line-length=100
-
-# Type checking (optional)
-mypy git_commitai.py
-```
-
-#### Writing Tests
-
-When adding new features or fixing bugs, please include tests:
-
-1. Add test cases to `test_git_commitai.py`
-2. Follow the existing test structure
-3. Ensure all tests pass before submitting PR
-4. Aim for high code coverage (>90%)
-
-Example test structure:
-```python
-class TestNewFeature:
-    """Test the new feature functionality."""
-    
-    def test_new_feature_basic(self):
-        """Test basic functionality of new feature."""
-        with patch('git_commitai.some_function') as mock_func:
-            mock_func.return_value = 'expected'
-            result = git_commitai.new_feature()
-            assert result == 'expected'
-    
-    def test_new_feature_edge_case(self):
-        """Test edge cases."""
-        # Test implementation
-```
-
-#### Submitting Pull Requests
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Add tests for your changes
-5. Ensure all tests pass (`make test`)
-6. Format your code (`black git_commitai.py test_git_commitai.py`)
-7. Commit your changes (you can use `git-commitai` itself!)
-8. Push to your fork (`git push origin feature/amazing-feature`)
-9. Open a Pull Request
-
-#### CI/CD
-
-All pull requests automatically run:
-- Tests on Python 3.8, 3.9, 3.10, 3.11, and 3.12
-- Cross-platform tests (Ubuntu, macOS, Windows)
-- Code coverage reporting
-- Linting and formatting checks
-
-## 🔒 License
-This project is released under the MIT license as found in the [LICENSE](LICENSE) file.
-
-## ✨ Star History
 [![Star History](https://api.star-history.com/svg?repos=semperai/git-commitai&type=Date)](https://star-history.com/#semperai/git-commitai&Date)
-
-## 🤗 Contributors
-<a href="https://github.com/semperai/git-commitai/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=semperai/git-commitai" />
-</a>
