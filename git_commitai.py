@@ -427,21 +427,6 @@ to understand the project's commit message conventions, but still follow the Git
         if args.message:
             base_prompt += f"\n\nAdditional context from user: {args.message}"
 
-        if args.all:
-            base_prompt += "\n\nNote: Files were automatically staged using the -a flag."
-
-        if args.no_verify:
-            base_prompt += "\n\nNote: Git hooks will be skipped for this commit (--no-verify)."
-
-        if allow_empty:
-            base_prompt += "\n\nNote: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created."
-
-        if author:
-            base_prompt += f"\n\nNote: Using custom author: {author}"
-
-        if date:
-            base_prompt += f"\n\nNote: Using custom date: {date}"
-
     return base_prompt
 
 
@@ -1474,12 +1459,6 @@ Configuration:
     {DIFF} - The git diff of changes
     {FILES} - The modified files with their content
     {GITMESSAGE} - Content from .gitmessage template if exists
-    {AMEND_NOTE} - Note about amending if --amend is used
-    {AUTO_STAGE_NOTE} - Note about auto-staging if -a is used
-    {NO_VERIFY_NOTE} - Note about skipping hooks if -n is used
-    {ALLOW_EMPTY_NOTE} - Note about empty commit if --allow-empty is used
-    {AUTHOR_NOTE} - Note about custom author if --author is used
-    {DATE_NOTE} - Note about custom date if --date is used
 
   Example .gitcommitai file:
     model: gpt-4
@@ -1493,8 +1472,6 @@ Configuration:
 
     {GITMESSAGE}
     {CONTEXT}
-    {AUTHOR_NOTE}
-    {DATE_NOTE}
 
     Review these changes:
     {DIFF}
