@@ -110,7 +110,7 @@ def show_man_page() -> bool:
             check=False
         )
         if result.returncode == 0:
-            sys.exit(0)
+            return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
 
@@ -1411,11 +1411,9 @@ def main() -> None:
 
     # Check for --help flag early and show man page if available
     if "--help" in sys.argv or "-h" in sys.argv:
-        if not show_man_page():
-            # Man page not available, continue with argparse help
-            pass
-        else:
+        if show_man_page():
             sys.exit(0)
+        # fall through to argparse help
 
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Generate AI-powered git commit messages",
