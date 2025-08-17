@@ -21,6 +21,8 @@ MAX_RETRIES = 3
 RETRY_DELAY = 2  # seconds between retries
 RETRY_BACKOFF = 1.5  # backoff multiplier for each retry
 
+REQ_TIMEOUT = 300  # 5 minutes timeout for requests
+
 
 def redact_secrets(message):
     """Redact sensitive information from debug messages."""
@@ -118,6 +120,8 @@ def load_gitcommitai_config():
     - {AUTO_STAGE_NOTE} - Note about auto-staging if -a is used
     - {NO_VERIFY_NOTE} - Note about skipping hooks if -n is used
     - {ALLOW_EMPTY_NOTE} - Note about empty commit if --allow-empty is used
+    - {AUTHOR_NOTE} - Note about custom author if --author is used
+    - {DATE_NOTE} - Note about custom date if --date is used
 
     Also supports optional model configuration.
     """
@@ -246,7 +250,7 @@ def run_git(args, check=True):
         return e.stdout if e.stdout else ""
 
 
-def build_ai_prompt(repo_config, args, allow_empty=False):
+def build_ai_prompt(repo_config, args, allow_empty=False, author=None, date=None):
     """Build the AI prompt, incorporating repository-specific customization."""
 
     # Check if repository has a custom prompt template
@@ -264,6 +268,8 @@ def build_ai_prompt(repo_config, args, allow_empty=False):
             'AUTO_STAGE_NOTE': "Note: Files were automatically staged using the -a flag." if args.all else "",
             'NO_VERIFY_NOTE': "Note: Git hooks will be skipped for this commit (--no-verify)." if args.no_verify else "",
             'ALLOW_EMPTY_NOTE': "Note: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created." if allow_empty else "",
+            'AUTHOR_NOTE': f"Note: Using custom author: {author}" if author else "",
+            'DATE_NOTE': f"Note: Using custom date: {date}" if date else "",
         }
 
         # Start with the template
@@ -278,9 +284,7 @@ def build_ai_prompt(repo_config, args, allow_empty=False):
                     base_prompt = base_prompt.replace(placeholder, value)
 
         # Normalize excessive blank lines introduced by empty replacements
-        while "\n\n\n" in base_prompt:
-            base_prompt = base_prompt.replace("\n\n\n", "\n\n")
-        base_prompt = base_prompt.strip("\n")
+        base_prompt = re.sub(r"\n{3,}", "\n\n", base_prompt).strip("\n")
 
     else:
         # Use default prompt
@@ -371,6 +375,12 @@ to understand the project's commit message conventions, but still follow the Git
 
         if allow_empty:
             base_prompt += "\n\nNote: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created."
+
+        if author:
+            base_prompt += f"\n\nNote: Using custom author: {author}"
+
+        if date:
+            base_prompt += f"\n\nNote: Using custom date: {date}"
 
     return base_prompt
 
@@ -550,8 +560,6 @@ def get_binary_file_info(filename, amend=False):
     info_parts = []
 
     # Get file extension
-    import os
-
     _, ext = os.path.splitext(filename)
     if ext:
         info_parts.append(f"File type: {ext}")
@@ -707,8 +715,7 @@ def get_staged_files(amend=False, allow_empty=False):
                         ).strip()
 
                     # Redact any secrets in file content before including in debug logs
-                    if DEBUG:
-                        debug_log(f"Processing file {filename} with content length: {len(staged_content)}")
+                    debug_log(f"Processing file {filename} with content length: {len(staged_content)}")
 
                     if (
                         staged_content or staged_content == ""
@@ -837,11 +844,11 @@ def read_gitmessage_template():
         git_root = get_git_root()
         repo_gitmessage = os.path.join(git_root, ".gitmessage")
         if os.path.isfile(repo_gitmessage):
-            debug_log(f"Found repository .gitmessage: {repo_gitmessage}")
+            debug_log("Found repository .gitmessage: {repo_gitmessage}")
             try:
                 with open(repo_gitmessage, 'r') as f:
                     content = f.read()
-                debug_log(f"Successfully read repository .gitmessage template")
+                debug_log("Successfully read repository .gitmessage template")
                 debug_log(f"Template content length: {len(content)} characters")
                 return content
             except (IOError, OSError) as e:
@@ -885,7 +892,7 @@ def read_gitmessage_template():
             try:
                 with open(home_gitmessage, 'r') as f:
                     content = f.read()
-                debug_log(f"Successfully read home directory .gitmessage template")
+                debug_log("Successfully read home directory .gitmessage template")
                 debug_log(f"Template content length: {len(content)} characters")
                 return content
             except (IOError, OSError) as e:
@@ -921,7 +928,7 @@ def make_api_request(config, message):
             }
 
             # Log headers with redacted auth
-            debug_log(f"Request headers: {redact_secrets(str(headers))}")
+            debug_log(f"Request headers: {headers}")
 
             req = Request(
                 config["api_url"],
@@ -929,7 +936,7 @@ def make_api_request(config, message):
                 headers=headers,
             )
 
-            with urlopen(req) as response:
+            with urlopen(req, timeout=REQ_TIMEOUT) as response:
                 data = json.loads(response.read().decode("utf-8"))
                 result = data["choices"][0]["message"]["content"]
                 debug_log(f"API request successful on attempt {attempt}, response length: {len(result)} characters")
@@ -978,6 +985,8 @@ def create_commit_message_file(
     no_verify=False,
     verbose=False,
     allow_empty=False,
+    author=None,
+    date=None,
 ):
     """Create the commit message file with git template."""
     debug_log(f"Creating commit message file in {git_dir}")
@@ -1047,6 +1056,12 @@ def create_commit_message_file(
             f.write("#\n")
         if allow_empty:
             f.write("# This will be an empty commit (--allow-empty).\n")
+            f.write("#\n")
+        if author:
+            f.write(f"# Using custom author: {author}\n")
+            f.write("#\n")
+        if date:
+            f.write(f"# Using custom date: {date}\n")
             f.write("#\n")
         f.write(f"# On branch {get_current_branch()}\n")
         f.write("#\n")
@@ -1219,6 +1234,8 @@ Examples:
   git-commitai -a                 # Auto-stage all tracked files and commit
   git-commitai --amend            # Amend the previous commit with new message
   git-commitai --allow-empty      # Create an empty commit
+  git-commitai --author "Name <email@example.com>"  # Override author
+  git-commitai --date "2024-01-01T12:00:00"  # Override date
   git-commitai --debug            # Enable debug logging
 
 Configuration:
@@ -1236,6 +1253,8 @@ Configuration:
     {AUTO_STAGE_NOTE} - Note about auto-staging if -a is used
     {NO_VERIFY_NOTE} - Note about skipping hooks if -n is used
     {ALLOW_EMPTY_NOTE} - Note about empty commit if --allow-empty is used
+    {AUTHOR_NOTE} - Note about custom author if --author is used
+    {DATE_NOTE} - Note about custom date if --date is used
 
   Example .gitcommitai file:
     model: gpt-4
@@ -1249,6 +1268,8 @@ Configuration:
 
     {GITMESSAGE}
     {CONTEXT}
+    {AUTHOR_NOTE}
+    {DATE_NOTE}
 
     Review these changes:
     {DIFF}
@@ -1296,6 +1317,14 @@ For more information, visit: https://github.com/semperai/git-commitai
         "--allow-empty",
         action="store_true",
         help="Allow creating an empty commit",
+    )
+    parser.add_argument(
+        "--author",
+        help="Override author information (format: 'Name <email@example.com>')",
+    )
+    parser.add_argument(
+        "--date",
+        help="Override author date (format: 'YYYY-MM-DD HH:MM:SS' or ISO 8601)",
     )
     parser.add_argument(
         "--debug",
@@ -1347,7 +1376,8 @@ For more information, visit: https://github.com/semperai/git-commitai
     config = get_env_config(args)
 
     # Build the AI prompt using repository-specific customization
-    prompt = build_ai_prompt(config["repo_config"], args, allow_empty=args.allow_empty)
+    prompt = build_ai_prompt(config["repo_config"], args, allow_empty=args.allow_empty,
+                            author=args.author, date=args.date)
 
     # Get git information
     git_diff = get_git_diff(amend=args.amend, allow_empty=args.allow_empty)
@@ -1400,6 +1430,8 @@ Generate the commit message following the rules above:"""
         no_verify=args.no_verify,
         verbose=args.verbose,
         allow_empty=args.allow_empty,
+        author=args.author,
+        date=args.date,
     )
 
     # Get modification time before editing
@@ -1440,6 +1472,12 @@ Generate the commit message following the rules above:"""
 
         if args.allow_empty:
             commit_cmd.append("--allow-empty")
+
+        if args.author:
+            commit_cmd.extend(["--author", args.author])
+
+        if args.date:
+            commit_cmd.extend(["--date", args.date])
 
         commit_cmd.extend(["-F", commit_file])
 

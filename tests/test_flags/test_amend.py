@@ -82,7 +82,11 @@ class TestAmendFeatures:
                                                     git_commitai.main()
 
                                                     # Verify git commit --amend was called
-                                                    calls = [c for c in mock_run.call_args_list if c.args and isinstance(c.args[0], list)]
+                                                    calls = [
+                                                        c for c in mock_run.call_args_list
+                                                        if c.args and isinstance(c.args[0], list)
+                                                        and "commit" in c.args[0]
+                                                    ]
                                                     assert any("--amend" in c.args[0] for c in calls)
 
 
