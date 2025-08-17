@@ -541,32 +541,6 @@ git commitai
 # or global ~/.gitmessage, ensuring team conventions are followed
 ```
 
-### Using Custom .gitcommitai Configuration
-
-```bash
-# Create a .gitcommitai file with custom prompt
-cat > .gitcommitai << 'EOF'
-model: gpt-4
-
-You are a commit message generator for our project.
-Use conventional commits format.
-
-{CONTEXT}
-
-Changes:
-{DIFF}
-
-Files:
-{FILES}
-
-Generate the commit message:
-EOF
-
-# Use with context
-git commitai -m "Refactored for better performance"
-# The AI will use your custom prompt template
-```
-
 ## 🐛 Debugging
 
 If you encounter issues, use the `--debug` flag to enable detailed logging to stderr:
