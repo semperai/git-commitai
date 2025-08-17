@@ -1055,8 +1055,11 @@ def make_api_request(config: Dict[str, Any], message: str) -> str:
                 "Authorization": f"Bearer {config['api_key']}",
             }
 
-            # Log headers with redacted auth
-            debug_log(f"Request headers: {headers}")
+            # Log headers with explicitly redacted auth
+            safe_headers = dict(headers)
+            if "Authorization" in safe_headers:
+                safe_headers["Authorization"] = "Bearer [REDACTED]"
+            debug_log(f"Request headers: {safe_headers}")
 
             req: Request = Request(
                 config["api_url"],
