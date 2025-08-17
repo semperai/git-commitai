@@ -30,10 +30,9 @@ jobs:
       run: |
         pytest test_git_commitai.py --cov --cov-report=xml
     
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+    - name: Coveralls
+      if: matrix.python-version == '3.10'
+      uses: coverallsapp/github-action@v2
 
   integration-test:
     runs-on: ${{ matrix.os }}
