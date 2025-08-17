@@ -17,7 +17,7 @@ class TestDryRunEdgeCases:
         args.date = None
         args.message = None
 
-        with patch("subprocess.run") as mock_run:
+        with patch("git_commitai.subprocess.run") as mock_run:
             mock_run.side_effect = Exception("Git error")
 
             with pytest.raises(SystemExit) as exc_info:
