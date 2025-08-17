@@ -319,6 +319,47 @@ If you have:
 
 Git Commit AI will use the `.gitmessage` from your repository root, ignoring the others. This ensures project-specific conventions always take precedence.
 
+### Custom AI Prompts (.gitcommitai)
+
+You can customize the AI prompt used for generating commit messages by creating a `.gitcommitai` file in your repository root.
+
+#### Basic Configuration
+
+The `.gitcommitai` file can optionally start with a model specification, followed by your custom prompt template:
+
+```bash
+# Create a .gitcommitai file with custom prompt
+cat > .gitcommitai << 'EOF'
+model: gpt-4
+
+You are a commit message generator for our project.
+Use conventional commits format.
+
+Context: {CONTEXT}
+Changes: {DIFF}
+Files: {FILES}
+
+Generate the commit message:
+EOF
+```
+
+#### Available Placeholders
+
+Your custom prompt template can use these placeholders:
+
+- `{CONTEXT}` - User-provided context via `-m` flag
+- `{DIFF}` - The git diff of changes
+- `{FILES}` - The modified files with their content
+- `{GITMESSAGE}` - Content from .gitmessage template if exists
+
+#### Configuration Precedence
+
+For model selection, the precedence is:
+1. CLI flag (`--model`)
+2. Environment variable (`GIT_COMMIT_AI_MODEL`)
+3. `.gitcommitai` file model specification
+4. Default (`qwen/qwen3-coder`)
+
 ## 📖 Usage
 
 ```bash
@@ -331,6 +372,9 @@ git commitai -m "Refactored auth system for JWT"
 
 # Auto-stage tracked files
 git commitai -a
+
+# Preview without committing
+git commitai --dry-run
 
 # Override API settings for this commit
 git commitai --model "claude-3.5-sonnet" --api-key "sk-ant-..."
@@ -374,7 +418,7 @@ The following table shows all standard `git commit` flags and their support stat
 | `-v, --verbose` | Show diff in commit message editor | ✅ **Supported** |
 | `-u<mode>, --untracked-files[=<mode>]` | Show untracked files | ❌ Not supported |
 | `--amend` | Amend the previous commit | ✅ **Supported** |
-| `--dry-run` | Don't actually commit, just show what would be committed | ❌ Not supported |
+| `--dry-run` | Don't actually commit, just show what would be committed | ✅ **Supported** |
 | `-c, --reedit-message=<commit>` | Reuse and edit message from specified commit | ❌ Not supported |
 | `-C, --reuse-message=<commit>` | Reuse message from specified commit | ❌ Not supported |
 | `--squash=<commit>` | Construct commit for squashing | ❌ Not supported |
@@ -423,6 +467,7 @@ The following table shows all standard `git commit` flags and their support stat
 - 🐛 **Debug mode** - Built-in debugging for troubleshooting issues
 - 🔄 **CLI overrides** - Override API settings per-command for testing and flexibility
 - 📋 **Template support** - Automatically uses your `.gitmessage` templates for project-specific conventions
+- 🎨 **Custom prompts** - Customize AI behavior with `.gitcommitai` configuration
 
 ## 🧪 Examples
 
@@ -430,6 +475,9 @@ The following table shows all standard `git commit` flags and their support stat
 # Stage changes and generate commit message
 git add src/
 git commitai
+
+# Preview what would be committed without actually committing
+git commitai --dry-run
 
 # Quick fix with auto-staging
 vim buggy-file.js
@@ -458,6 +506,9 @@ git commitai --model "gpt-4o" --api-key "sk-..."
 
 # Use local LLM for sensitive code
 git commitai --api-url "http://localhost:11434/v1/chat/completions" --model "codellama"
+
+# Preview with dry-run and debug
+git commitai --dry-run --debug 2>&1 | tee preview.log
 
 # Debug mode for troubleshooting (outputs to stderr)
 git commitai --debug 2> debug.log

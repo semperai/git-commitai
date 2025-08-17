@@ -60,6 +60,7 @@ jobs:
         git config --global user.name "Test User"
 
     - name: Test script execution
+      shell: bash
       run: |
         python git_commitai.py --help || true
 

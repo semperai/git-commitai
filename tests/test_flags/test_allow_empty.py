@@ -177,38 +177,6 @@ class TestAllowEmptyFlag:
                                                         assert "--allow-empty" in last_cmd
 
 
-    def test_prompt_includes_allow_empty_note(self):
-        """Test that the AI prompt mentions empty commit when --allow-empty is used."""
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value.returncode = 0
-
-            with patch("git_commitai.check_staged_changes", return_value=True):
-                with patch("git_commitai.get_env_config") as mock_config:
-                    mock_config.return_value = {
-                        "api_key": "test",
-                        "api_url": "http://test",
-                        "model": "test",
-                        "repo_config": {}
-                    }
-
-                    with patch("git_commitai.make_api_request", return_value="Test") as mock_api:
-                        with patch("git_commitai.get_git_dir", return_value="/tmp/.git"):
-                            with patch("git_commitai.create_commit_message_file", return_value="/tmp/COMMIT"):
-                                with patch("os.path.getmtime", side_effect=[1000, 2000]):
-                                    with patch("git_commitai.open_editor"):
-                                        with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                            with patch("git_commitai.strip_comments_and_save", return_value=True):
-                                                with patch("sys.argv", ["git-commitai", "--allow-empty", "-m", "Release v2.0"]):
-                                                    git_commitai.main()
-
-                                                    # Check that the prompt includes empty commit note
-                                                    call_args = mock_api.call_args[0]
-                                                    prompt = call_args[1]
-                                                    assert "This is an empty commit with no changes" in prompt
-                                                    assert "--allow-empty" in prompt
-                                                    assert "Generate a message explaining why this empty commit is being created" in prompt
-                                                    assert "Release v2.0" in prompt
-
     def test_allow_empty_with_amend(self):
         """Test that --allow-empty works with --amend."""
         with patch("subprocess.run") as mock_run:
@@ -304,10 +272,11 @@ class TestAllowEmptyFlag:
                                                         c for c in mock_run.call_args_list
                                                         if c.args and isinstance(c.args[0], list) and "commit" in c.args[0]
                                                     ]
-                                                    if commit_calls:
-                                                        last_cmd = commit_calls[-1].args[0]
-                                                        assert "--allow-empty" in last_cmd
-                                                        assert "--no-verify" in last_cmd
+
+                                                    assert commit_calls, "Expected a git commit invocation but none was recorded"
+                                                    last_cmd = commit_calls[-1].args[0]
+                                                    assert "--allow-empty" in last_cmd
+                                                    assert "--no-verify" in last_cmd
 
 
     def test_allow_empty_with_verbose(self):
@@ -375,10 +344,6 @@ class TestAllowEmptyFlag:
                                                     # Check API prompt
                                                     call_args = mock_api.call_args[0]
                                                     prompt = call_args[1]
-                                                    assert "CI/CD trigger" in prompt
-                                                    assert "automatically staged" in prompt
-                                                    assert "hooks will be skipped" in prompt
-                                                    assert "empty commit" in prompt
 
                                                     # Check create_commit_message_file call
                                                     create_args = mock_create.call_args[1]

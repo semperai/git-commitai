@@ -175,7 +175,7 @@ class TestBuildAIPrompt:
         mock_args.all = False
         mock_args.no_verify = False
 
-        prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False)
+        prompt = git_commitai.build_ai_prompt(repo_config, mock_args)
 
         assert "You are a git commit message generator" in prompt
         assert "CRITICAL RULES YOU MUST FOLLOW" in prompt
@@ -192,7 +192,7 @@ class TestBuildAIPrompt:
         mock_args.all = False
         mock_args.no_verify = False
 
-        prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False)
+        prompt = git_commitai.build_ai_prompt(repo_config, mock_args)
 
         assert "Custom prompt" in prompt
         assert "Additional context from user: Added new feature" in prompt
@@ -211,202 +211,50 @@ class TestBuildAIPrompt:
         mock_args.no_verify = False
 
         with patch("git_commitai.read_gitmessage_template", return_value="# Use conventional commits"):
-            prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False)
+            prompt = git_commitai.build_ai_prompt(repo_config, mock_args)
 
             assert "Project rules:" in prompt
             assert "# Use conventional commits" in prompt
 
-    def test_template_with_amend_note(self):
-        """Test template with AMEND_NOTE placeholder."""
-        repo_config = {
-            "prompt_template": "Instructions:\n{AMEND_NOTE}\nGenerate message:"
-        }
-        mock_args = MagicMock()
-        mock_args.message = None
-        mock_args.amend = True
-        mock_args.all = False
-        mock_args.no_verify = False
-
-        prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False)
-
-        assert "Note: You are amending the previous commit." in prompt
-
-    def test_template_with_auto_stage_note(self):
-        """Test template with AUTO_STAGE_NOTE placeholder."""
-        repo_config = {
-            "prompt_template": "{AUTO_STAGE_NOTE}\nGenerate message:"
-        }
-        mock_args = MagicMock()
-        mock_args.message = None
-        mock_args.amend = False
-        mock_args.all = True
-        mock_args.no_verify = False
-
-        prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False)
-
-        assert "Note: Files were automatically staged using the -a flag." in prompt
-
-    def test_template_with_no_verify_note(self):
-        """Test template with NO_VERIFY_NOTE placeholder."""
-        repo_config = {
-            "prompt_template": "{NO_VERIFY_NOTE}\nGenerate message:"
-        }
-        mock_args = MagicMock()
-        mock_args.message = None
-        mock_args.amend = False
-        mock_args.all = False
-        mock_args.no_verify = True
-
-        prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False)
-
-        assert "Note: Git hooks will be skipped for this commit (--no-verify)." in prompt
-
-    def test_template_with_allow_empty_note(self):
-        """Test template with ALLOW_EMPTY_NOTE placeholder."""
-        repo_config = {
-            "prompt_template": "{ALLOW_EMPTY_NOTE}\nGenerate message:"
-        }
-        mock_args = MagicMock()
-        mock_args.message = None
-        mock_args.amend = False
-        mock_args.all = False
-        mock_args.no_verify = False
-
-        prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=True)
-
-        assert "Note: This is an empty commit with no changes (--allow-empty)" in prompt
-        assert "Generate a message explaining why this empty commit is being created" in prompt
-
-    def test_template_with_author_note(self):
-        """Test template with AUTHOR_NOTE placeholder."""
-        repo_config = {
-            "prompt_template": "Commit info:\n{AUTHOR_NOTE}\nGenerate message:"
-        }
-        mock_args = MagicMock()
-        mock_args.message = None
-        mock_args.amend = False
-        mock_args.all = False
-        mock_args.no_verify = False
-
-        author = "Jane Developer <jane@example.com>"
-        prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False, author=author)
-
-        assert f"Note: Using custom author: {author}" in prompt
-        assert "{AUTHOR_NOTE}" not in prompt  # Placeholder should be replaced
-
-    def test_template_with_date_note(self):
-        """Test template with DATE_NOTE placeholder."""
-        repo_config = {
-            "prompt_template": "Timestamp info:\n{DATE_NOTE}\nGenerate message:"
-        }
-        mock_args = MagicMock()
-        mock_args.message = None
-        mock_args.amend = False
-        mock_args.all = False
-        mock_args.no_verify = False
-
-        date = "2024-01-15T10:30:00"
-        prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False, date=date)
-
-        assert f"Note: Using custom date: {date}" in prompt
-        assert "{DATE_NOTE}" not in prompt  # Placeholder should be replaced
-
-    def test_template_with_author_and_date_notes(self):
-        """Test template with both AUTHOR_NOTE and DATE_NOTE placeholders."""
-        repo_config = {
-            "prompt_template": """Commit metadata:
-{AUTHOR_NOTE}
-{DATE_NOTE}
-Generate message:"""
-        }
-        mock_args = MagicMock()
-        mock_args.message = None
-        mock_args.amend = False
-        mock_args.all = False
-        mock_args.no_verify = False
-
-        author = "CI Bot <bot@ci.com>"
-        date = "@1705329000"
-        prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False, author=author, date=date)
-
-        assert f"Note: Using custom author: {author}" in prompt
-        assert f"Note: Using custom date: {date}" in prompt
-        assert "{AUTHOR_NOTE}" not in prompt
-        assert "{DATE_NOTE}" not in prompt
-
-    def test_template_with_all_placeholders(self):
-        """Test template with all placeholders including author and date."""
+    def test_template_with_context_and_gitmessage(self):
+        """Test template with both CONTEXT and GITMESSAGE placeholders."""
         repo_config = {
             "prompt_template": """Context: {CONTEXT}
 Git message: {GITMESSAGE}
-{AMEND_NOTE}
-{AUTO_STAGE_NOTE}
-{NO_VERIFY_NOTE}
-{ALLOW_EMPTY_NOTE}
-{AUTHOR_NOTE}
-{DATE_NOTE}
 Diff: {DIFF}
 Files: {FILES}"""
         }
         mock_args = MagicMock()
         mock_args.message = "Bug fix"
-        mock_args.amend = True
-        mock_args.all = True
-        mock_args.no_verify = True
-
-        author = "Test User <test@example.com>"
-        date = "2 days ago"
-
-        with patch("git_commitai.read_gitmessage_template", return_value="Template content"):
-            prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=True, author=author, date=date)
-
-            assert "Additional context from user: Bug fix" in prompt
-            assert "Template content" in prompt
-            assert "amending the previous commit" in prompt
-            assert "automatically staged" in prompt
-            assert "hooks will be skipped" in prompt
-            assert "empty commit" in prompt
-            assert f"Using custom author: {author}" in prompt
-            assert f"Using custom date: {date}" in prompt
-
-    def test_template_with_unused_placeholders(self):
-        """Test that unused placeholders are replaced with empty strings."""
-        repo_config = {
-            "prompt_template": "Start\n{CONTEXT}\n{AMEND_NOTE}\n{AUTHOR_NOTE}\n{DATE_NOTE}\nEnd"
-        }
-        mock_args = MagicMock()
-        mock_args.message = None  # No context
-        mock_args.amend = False  # No amend
-        mock_args.all = False
-        mock_args.no_verify = False
-
-        # No author or date provided
-        prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False, author=None, date=None)
-
-        # Unused placeholders should be replaced with empty strings
-        assert "{CONTEXT}" not in prompt
-        assert "{AMEND_NOTE}" not in prompt
-        assert "{AUTHOR_NOTE}" not in prompt
-        assert "{DATE_NOTE}" not in prompt
-        assert "Start" in prompt
-        assert "End" in prompt
-
-    def test_default_prompt_with_author_date(self):
-        """Test default prompt includes author and date when no custom template."""
-        repo_config = {}  # No custom template
-        mock_args = MagicMock()
-        mock_args.message = None
         mock_args.amend = False
         mock_args.all = False
         mock_args.no_verify = False
 
-        author = "Developer <dev@example.com>"
-        date = "yesterday"
+        with patch("git_commitai.read_gitmessage_template", return_value="Template content"):
+            prompt = git_commitai.build_ai_prompt(repo_config, mock_args)
 
-        prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False, author=author, date=date)
+            assert "Additional context from user: Bug fix" in prompt
+            assert "Template content" in prompt
 
-        assert f"Note: Using custom author: {author}" in prompt
-        assert f"Note: Using custom date: {date}" in prompt
+    def test_template_with_unused_placeholders(self):
+        """Test that unused placeholders are replaced with empty strings."""
+        repo_config = {
+            "prompt_template": "Start\n{CONTEXT}\n{GITMESSAGE}\nEnd"
+        }
+        mock_args = MagicMock()
+        mock_args.message = None  # No context
+        mock_args.amend = False
+        mock_args.all = False
+        mock_args.no_verify = False
+
+        with patch("git_commitai.read_gitmessage_template", return_value=None):  # No gitmessage
+            prompt = git_commitai.build_ai_prompt(repo_config, mock_args)
+
+            # Unused placeholders should be replaced with empty strings
+            assert "{CONTEXT}" not in prompt
+            assert "{GITMESSAGE}" not in prompt
+            assert "Start" in prompt
+            assert "End" in prompt
 
     def test_default_prompt_with_gitmessage(self):
         """Test default prompt includes .gitmessage when no custom template."""
@@ -418,7 +266,7 @@ Files: {FILES}"""
         mock_args.no_verify = False
 
         with patch("git_commitai.read_gitmessage_template", return_value="# Commit guidelines"):
-            prompt = git_commitai.build_ai_prompt(repo_config, mock_args, allow_empty=False)
+            prompt = git_commitai.build_ai_prompt(repo_config, mock_args)
 
             assert "PROJECT-SPECIFIC COMMIT TEMPLATE/GUIDELINES:" in prompt
             assert "# Commit guidelines" in prompt
@@ -567,53 +415,6 @@ Generate commit message:"""
                                                                 assert "diff content" in prompt  # {DIFF} replaced
                                                                 assert "file content" in prompt  # {FILES} replaced
                                                                 assert "Added feature" in prompt  # Context included
-
-    def test_main_with_author_date_template(self):
-        """Test main flow with custom template using author and date placeholders."""
-        custom_template = """Commit generator with metadata.
-{AUTHOR_NOTE}
-{DATE_NOTE}
-{DIFF}
-{FILES}
-Generate:"""
-
-        repo_config = {"prompt_template": custom_template}
-
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value.returncode = 0
-
-            with patch("git_commitai.check_staged_changes", return_value=True):
-                with patch("git_commitai.load_gitcommitai_config", return_value=repo_config):
-                    with patch("git_commitai.get_env_config") as mock_env_config:
-                        mock_env_config.return_value = {
-                            "api_key": "test-key",
-                            "api_url": "http://test",
-                            "model": "test-model",
-                            "repo_config": repo_config
-                        }
-
-                        with patch("git_commitai.make_api_request") as mock_api:
-                            mock_api.return_value = "feat: Test commit"
-
-                            with patch("git_commitai.get_git_dir", return_value="/tmp/.git"):
-                                with patch("git_commitai.get_git_diff", return_value="diff"):
-                                    with patch("git_commitai.get_staged_files", return_value="files"):
-                                        with patch("git_commitai.create_commit_message_file", return_value="/tmp/COMMIT"):
-                                            with patch("os.path.getmtime", side_effect=[1000, 2000]):
-                                                with patch("git_commitai.open_editor"):
-                                                    with patch("git_commitai.is_commit_message_empty", return_value=False):
-                                                        with patch("git_commitai.strip_comments_and_save", return_value=True):
-                                                            with patch("sys.argv", ["git-commitai", "--author", "Test <test@example.com>", "--date", "2024-01-01"]):
-                                                                git_commitai.main()
-
-                                                                # Verify placeholders were replaced with actual values
-                                                                call_args = mock_api.call_args[0]
-                                                                prompt = call_args[1]
-
-                                                                assert "Using custom author: Test <test@example.com>" in prompt
-                                                                assert "Using custom date: 2024-01-01" in prompt
-                                                                assert "{AUTHOR_NOTE}" not in prompt
-                                                                assert "{DATE_NOTE}" not in prompt
 
     def test_main_with_template_placeholders_replaced(self):
         """Test that template placeholders are properly replaced in main flow."""

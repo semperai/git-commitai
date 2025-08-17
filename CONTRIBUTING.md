@@ -240,7 +240,7 @@ If mypy reports errors:
    from typing import cast
    value = cast(str, ambiguous_value)  # Tell mypy this is definitely a str
    ```
-5. **Use `# type: ignore` as last resort** with a comment explaining why:
+5. **Use `# type: ignore` as a last resort** with a comment explaining why:
    ```python
    result = some_dynamic_operation()  # type: ignore # Third-party library returns Any
    ```

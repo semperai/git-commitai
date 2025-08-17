@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import os
 import sys
 import json
@@ -103,12 +105,12 @@ def show_man_page() -> bool:
     """
     try:
         # Try to use man command to show the man page
-        result: subprocess.CompletedProcess[bytes] = subprocess.run(
+        result = subprocess.run(
             ["man", "git-commitai"],
             check=False
         )
         if result.returncode == 0:
-            sys.exit(0)
+            return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
 
@@ -137,11 +139,6 @@ def load_gitcommitai_config() -> Dict[str, Any]:
     - {FILES} - The modified files with their content
     - {GITMESSAGE} - Content from .gitmessage template if exists
     - {AMEND_NOTE} - Note about amending if --amend is used
-    - {AUTO_STAGE_NOTE} - Note about auto-staging if -a is used
-    - {NO_VERIFY_NOTE} - Note about skipping hooks if -n is used
-    - {ALLOW_EMPTY_NOTE} - Note about empty commit if --allow-empty is used
-    - {AUTHOR_NOTE} - Note about custom author if --author is used
-    - {DATE_NOTE} - Note about custom date if --date is used
 
     Also supports optional model configuration.
 
@@ -276,7 +273,7 @@ def run_git(args: List[str], check: bool = True) -> str:
     debug_log(f"Running git command: git {' '.join(args)}")
 
     try:
-        result: subprocess.CompletedProcess[str] = subprocess.run(
+        result = subprocess.run(
             ["git"] + args,
             capture_output=True,
             text=True,
@@ -291,21 +288,12 @@ def run_git(args: List[str], check: bool = True) -> str:
         return e.stdout if e.stdout else ""
 
 
-def build_ai_prompt(
-    repo_config: Dict[str, Any],
-    args: argparse.Namespace,
-    allow_empty: bool = False,
-    author: Optional[str] = None,
-    date: Optional[str] = None
-) -> str:
+def build_ai_prompt(repo_config: Dict[str, Any], args: argparse.Namespace) -> str:
     """Build the AI prompt, incorporating repository-specific customization.
 
     Args:
         repo_config: Repository-specific configuration
         args: Parsed command line arguments
-        allow_empty: Whether this is an empty commit
-        author: Custom author if specified
-        date: Custom date if specified
 
     Returns:
         Complete prompt string for AI
@@ -323,11 +311,6 @@ def build_ai_prompt(
             'CONTEXT': f"Additional context from user: {args.message}" if args.message else "",
             'GITMESSAGE': gitmessage_content,
             'AMEND_NOTE': "Note: You are amending the previous commit." if args.amend else "",
-            'AUTO_STAGE_NOTE': "Note: Files were automatically staged using the -a flag." if args.all else "",
-            'NO_VERIFY_NOTE': "Note: Git hooks will be skipped for this commit (--no-verify)." if args.no_verify else "",
-            'ALLOW_EMPTY_NOTE': "Note: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created." if allow_empty else "",
-            'AUTHOR_NOTE': f"Note: Using custom author: {author}" if author else "",
-            'DATE_NOTE': f"Note: Using custom date: {date}" if date else "",
         }
 
         # Start with the template
@@ -425,21 +408,6 @@ to understand the project's commit message conventions, but still follow the Git
         if args.message:
             base_prompt += f"\n\nAdditional context from user: {args.message}"
 
-        if args.all:
-            base_prompt += "\n\nNote: Files were automatically staged using the -a flag."
-
-        if args.no_verify:
-            base_prompt += "\n\nNote: Git hooks will be skipped for this commit (--no-verify)."
-
-        if allow_empty:
-            base_prompt += "\n\nNote: This is an empty commit with no changes (--allow-empty). Generate a message explaining why this empty commit is being created."
-
-        if author:
-            base_prompt += f"\n\nNote: Using custom author: {author}"
-
-        if date:
-            base_prompt += f"\n\nNote: Using custom date: {date}"
-
     return base_prompt
 
 
@@ -480,7 +448,7 @@ def check_staged_changes(amend: bool = False, auto_stage: bool = False, allow_em
         # First, check if there are any changes to stage
         try:
             # Check for modified tracked files
-            result: subprocess.CompletedProcess[bytes] = subprocess.run(["git", "diff", "--quiet"], capture_output=True)
+            result = subprocess.run(["git", "diff", "--quiet"], capture_output=True)
             if result.returncode != 0:
                 debug_log("Found unstaged changes, auto-staging them")
                 # There are unstaged changes in tracked files, stage them
@@ -499,7 +467,7 @@ def check_staged_changes(amend: bool = False, auto_stage: bool = False, allow_em
             run_git(["rev-parse", "HEAD"], check=True)
             debug_log("Found previous commit to amend")
             return True
-        except:
+        except subprocess.CalledProcessError:
             debug_log("No previous commit to amend")
             print("fatal: You have nothing to amend.")
             return False
@@ -1021,6 +989,56 @@ def read_gitmessage_template() -> Optional[str]:
     return None
 
 
+def show_dry_run_summary(args: argparse.Namespace) -> None:
+    """Show what would be committed in dry-run mode by delegating to git.
+
+    Args:
+        args: Parsed command line arguments
+    """
+    debug_log("Dry-run mode: delegating to git commit --dry-run")
+
+    # Build the git commit command with --dry-run
+    commit_cmd: List[str] = ["git", "commit", "--dry-run"]
+
+    # Add any other flags that were passed
+    if args.amend:
+        commit_cmd.append("--amend")
+
+    if args.allow_empty:
+        commit_cmd.append("--allow-empty")
+
+    if args.no_verify:
+        commit_cmd.append("--no-verify")
+
+    if args.verbose:
+        commit_cmd.append("--verbose")
+
+    if args.author:
+        commit_cmd.extend(["--author", args.author])
+
+    if args.date:
+        commit_cmd.extend(["--date", args.date])
+
+    # If user provided a message context, we can add it as a placeholder message
+    # (though it won't be shown in dry-run output)
+    if args.message:
+        commit_cmd.extend(["-m", "placeholder"])
+
+    debug_log(f"Executing: {' '.join(commit_cmd)}")
+
+    try:
+        # Run git commit --dry-run and let it handle all the output
+        result = subprocess.run(commit_cmd, check=False)
+        # Exit with the same code that git returned
+        sys.exit(result.returncode)
+    except subprocess.CalledProcessError as e:
+        debug_log(f"Git commit --dry-run failed with code {e.returncode}")
+        sys.exit(e.returncode)
+    except Exception as e:
+        debug_log(f"Error running git commit --dry-run: {e}")
+        print(f"Error: Failed to run git commit --dry-run: {e}")
+        sys.exit(1)
+
 def make_api_request(config: Dict[str, Any], message: str) -> str:
     """Make API request with retry logic.
 
@@ -1388,11 +1406,9 @@ def main() -> None:
 
     # Check for --help flag early and show man page if available
     if "--help" in sys.argv or "-h" in sys.argv:
-        if not show_man_page():
-            # Man page not available, continue with argparse help
-            pass
-        else:
+        if show_man_page():
             sys.exit(0)
+        # fall through to argparse help
 
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Generate AI-powered git commit messages",
@@ -1404,6 +1420,7 @@ Examples:
   git-commitai -a                 # Auto-stage all tracked files and commit
   git-commitai --amend            # Amend the previous commit with new message
   git-commitai --allow-empty      # Create an empty commit
+  git-commitai --dry-run          # Show what would be committed without committing
   git-commitai --author "Name <email@example.com>"  # Override author
   git-commitai --date "2024-01-01T12:00:00"  # Override date
   git-commitai --debug            # Enable debug logging
@@ -1419,12 +1436,6 @@ Configuration:
     {DIFF} - The git diff of changes
     {FILES} - The modified files with their content
     {GITMESSAGE} - Content from .gitmessage template if exists
-    {AMEND_NOTE} - Note about amending if --amend is used
-    {AUTO_STAGE_NOTE} - Note about auto-staging if -a is used
-    {NO_VERIFY_NOTE} - Note about skipping hooks if -n is used
-    {ALLOW_EMPTY_NOTE} - Note about empty commit if --allow-empty is used
-    {AUTHOR_NOTE} - Note about custom author if --author is used
-    {DATE_NOTE} - Note about custom date if --date is used
 
   Example .gitcommitai file:
     model: gpt-4
@@ -1438,8 +1449,6 @@ Configuration:
 
     {GITMESSAGE}
     {CONTEXT}
-    {AUTHOR_NOTE}
-    {DATE_NOTE}
 
     Review these changes:
     {DIFF}
@@ -1489,6 +1498,11 @@ For more information, visit: https://github.com/semperai/git-commitai
         help="Allow creating an empty commit",
     )
     parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Don't actually commit, just show what would be committed",
+    )
+    parser.add_argument(
         "--author",
         help="Override author information (format: 'Name <email@example.com>')",
     )
@@ -1517,6 +1531,8 @@ For more information, visit: https://github.com/semperai/git-commitai
         debug_log("Git Commit AI started with --debug flag")
         debug_log(f"Python version: {sys.version}")
         debug_log(f"Arguments: {sys.argv[1:]}")
+        if args.dry_run:
+            debug_log("DRY RUN MODE - No commit will be created")
 
     # Check if in a git repository first
     try:
@@ -1546,8 +1562,7 @@ For more information, visit: https://github.com/semperai/git-commitai
     config: Dict[str, Any] = get_env_config(args)
 
     # Build the AI prompt using repository-specific customization
-    prompt: str = build_ai_prompt(config["repo_config"], args, allow_empty=args.allow_empty,
-                            author=args.author, date=args.date)
+    prompt: str = build_ai_prompt(config["repo_config"], args)
 
     # Get git information
     git_diff: str = get_git_diff(amend=args.amend, allow_empty=args.allow_empty)
@@ -1587,6 +1602,12 @@ Generate the commit message following the rules above:"""
 
     # Make API request with retry logic
     commit_message: str = make_api_request(config, prompt)
+
+    # If dry-run mode, show what would be committed and exit
+    if args.dry_run:
+        debug_log("Dry-run mode: showing summary and exiting")
+        show_dry_run_summary(args)
+        sys.exit(0)
 
     # Get git directory
     git_dir: str = get_git_dir()

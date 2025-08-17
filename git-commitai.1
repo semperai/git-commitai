@@ -13,6 +13,7 @@ git-commitai \- Generate AI-powered git commit messages
 [\fB\-n\fR|\fB\-\-no\-verify\fR]
 [\fB\-v\fR|\fB\-\-verbose\fR]
 [\fB\-\-allow\-empty\fR]
+[\fB\-\-dry\-run\fR]
 [\fB\-\-author\fR \fIauthor\fR]
 [\fB\-\-date\fR \fIdate\fR]
 [\fB\-\-debug\fR]
@@ -82,6 +83,10 @@ The diff is displayed as comments after the commit message template.
 .BR \-\-allow\-empty
 Allow creating a commit with no changes.
 Useful for triggering CI/CD pipelines or creating marker commits.
+
+.TP
+.BR \-\-dry\-run
+Don't actually create a commit, just show what would be committed.
 
 .TP
 .BR \-\-author " " \fIauthor\fR
@@ -177,6 +182,50 @@ $ git config commit.template .github/commit-template
 $ cp template.txt ~/.gitmessage
 .fi
 
+.SH CONFIGURATION FILES
+.SS .gitcommitai File
+You can customize the AI prompt used for generating commit messages by creating a \fB.gitcommitai\fR file in your repository root.
+
+The file can optionally start with a model specification:
+.nf
+model: gpt-4
+.fi
+
+Then include your prompt template with placeholders:
+.IP \(bu 2
+\fB{CONTEXT}\fR - User-provided context via -m flag
+.IP \(bu 2
+\fB{DIFF}\fR - The git diff of changes
+.IP \(bu 2
+\fB{FILES}\fR - The modified files with their content
+.IP \(bu 2
+\fB{GITMESSAGE}\fR - Content from .gitmessage template if exists
+
+.SS Configuration Precedence
+For the model setting, the precedence order is:
+.IP 1. 4
+CLI flag (\fB--model\fR)
+.IP 2. 4
+Environment variable (\fBGIT_COMMIT_AI_MODEL\fR)
+.IP 3. 4
+\fB.gitcommitai\fR file model specification
+.IP 4. 4
+Default (\fIqwen/qwen3-coder\fR)
+
+.SS Example .gitcommitai File
+.nf
+model: gpt-4
+
+You are a commit message generator for our project.
+Use conventional commits format.
+
+Context: {CONTEXT}
+Changes: {DIFF}
+Files: {FILES}
+
+Generate the commit message:
+.fi
+
 .SH EXAMPLES
 .SS Basic Usage
 .nf
@@ -189,6 +238,9 @@ $ git commitai -m "Refactored auth system for JWT"
 
 # Auto-stage and commit tracked files
 $ git commitai -a
+
+# Preview without committing
+$ git commitai --dry-run
 .fi
 
 .SS Advanced Usage
@@ -216,6 +268,39 @@ $ git commitai --date "2 weeks ago"
 
 # Combine author and date overrides
 $ git commitai --author "Bot <bot@ci.com>" --date "@1705329000"
+.fi
+
+.SS Dry-Run Mode
+.nf
+# Preview what would be committed without actually committing
+$ git commitai --dry-run
+
+# Combine dry-run with other options
+$ git commitai --dry-run -a -m "Added new feature"
+$ git commitai --dry-run --amend
+$ git commitai --dry-run --allow-empty
+
+# Debug dry-run to see the full process
+$ git commitai --dry-run --debug 2>&1 | tee preview.log
+
+# Example output:
+# Dry run mode - no commit will be created
+#
+# On branch main
+# Changes to be committed:
+#   M src/main.py
+#   A tests/test_main.py
+#
+# Generated commit message:
+#
+# Add unit tests for main module
+#
+# - Created comprehensive test suite
+# - Added edge case handling
+# - Improved code coverage to 95%
+#
+# (git hooks would be skipped)
+# To actually commit these changes, run without --dry-run
 .fi
 
 .SS API Configuration
@@ -275,8 +360,6 @@ You are a commit message generator for our project.
 Use conventional commits format.
 
 {CONTEXT}
-{AUTHOR_NOTE}
-{DATE_NOTE}
 
 Changes:
 {DIFF}
@@ -287,9 +370,9 @@ Files:
 Generate the commit message:
 EOF
 
-# Use with author/date overrides
-$ git commitai --author "CI Bot <ci@example.com>" --date "now"
-# The AI will be informed about the custom author and date
+# Use with context
+$ git commitai -m "Performance improvements"
+# The AI will use your custom prompt template
 .fi
 
 .SH DEBUGGING
@@ -305,8 +388,6 @@ File processing information
 Configuration and environment details
 .IP \(bu 2
 Template file detection and loading (shows which template was chosen and why)
-.IP \(bu 2
-Author and date override information
 .IP \(bu 2
 Error messages and stack traces
 
@@ -332,7 +413,7 @@ Repository \fB.gitmessage\fR files take precedence over all other templates.
 .TP
 .B .gitcommitai
 Project-specific AI prompt configuration file.
-Can include custom prompt templates with placeholders for context, author, date, and other metadata.
+Can include custom prompt templates with placeholders for context, diff, and files.
 
 .TP
 .B .git/COMMIT_EDITMSG
@@ -341,7 +422,7 @@ Temporary file containing the commit message being edited.
 .SH EXIT STATUS
 .TP
 .B 0
-Successful commit
+Successful commit or successful dry-run
 
 .TP
 .B 1
