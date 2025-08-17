@@ -1,9 +1,8 @@
 """Tests for --dry-run functionality."""
 
-import sys
 import argparse
-from io import StringIO
-from unittest.mock import patch, MagicMock, Mock, call
+from unittest.mock import patch
+from contextlib import suppress
 
 import git_commitai
 
@@ -35,10 +34,8 @@ class TestDryRunFlag:
             with patch("sys.exit") as mock_exit:
                 mock_exit.side_effect = SystemExit(0)
 
-                try:
+                with suppress(SystemExit):
                     git_commitai.show_dry_run_summary(args)
-                except SystemExit:
-                    pass
 
                 # Verify git commit --dry-run was called
                 mock_run.assert_called_once()
@@ -72,10 +69,8 @@ class TestDryRunFlag:
             with patch("sys.exit") as mock_exit:
                 mock_exit.side_effect = SystemExit(0)
 
-                try:
+                with suppress(SystemExit):
                     git_commitai.show_dry_run_summary(args)
-                except SystemExit:
-                    pass
 
                 # Verify --amend was passed to git
                 call_args = mock_run.call_args[0][0]
@@ -105,10 +100,8 @@ class TestDryRunFlag:
             with patch("sys.exit") as mock_exit:
                 mock_exit.side_effect = SystemExit(0)
 
-                try:
+                with suppress(SystemExit):
                     git_commitai.show_dry_run_summary(args)
-                except SystemExit:
-                    pass
 
                 # Verify --allow-empty was passed to git
                 call_args = mock_run.call_args[0][0]
@@ -138,10 +131,8 @@ class TestDryRunFlag:
             with patch("sys.exit") as mock_exit:
                 mock_exit.side_effect = SystemExit(0)
 
-                try:
+                with suppress(SystemExit):
                     git_commitai.show_dry_run_summary(args)
-                except SystemExit:
-                    pass
 
                 # Verify all options were passed to git
                 call_args = mock_run.call_args[0][0]
@@ -178,10 +169,8 @@ class TestDryRunFlag:
             with patch("sys.exit") as mock_exit:
                 mock_exit.side_effect = SystemExit(1)
 
-                try:
+                with suppress(SystemExit):
                     git_commitai.show_dry_run_summary(args)
-                except SystemExit:
-                    pass
 
                 # Should exit with git's failure code
                 mock_exit.assert_called_with(1)
@@ -219,10 +208,8 @@ class TestDryRunFlag:
                                         with patch("sys.exit") as mock_exit:
                                             mock_exit.side_effect = SystemExit(0)
 
-                                            try:
+                                            with suppress(SystemExit):
                                                 git_commitai.main()
-                                            except SystemExit:
-                                                pass  # Expected
 
                                             # Verify API was called (happens before dry-run check)
                                             mock_api.assert_called_once()
@@ -251,10 +238,8 @@ class TestDryRunFlag:
                             with patch("sys.exit") as mock_exit:
                                 mock_exit.side_effect = SystemExit(1)
 
-                                try:
+                                with suppress(SystemExit):
                                     git_commitai.main()
-                                except SystemExit:
-                                    pass  # Expected
 
                                 # API should NOT be called when no staged changes
                                 mock_api.assert_not_called()
@@ -293,10 +278,8 @@ class TestDryRunFlag:
                                         with patch("sys.exit") as mock_exit:
                                             mock_exit.side_effect = SystemExit(0)
 
-                                            try:
+                                            with suppress(SystemExit):
                                                 git_commitai.main()
-                                            except SystemExit:
-                                                pass  # Expected
 
                                             # Verify auto-stage was passed through
                                             mock_show_summary.assert_called_once()
@@ -334,10 +317,8 @@ class TestDryRunFlag:
                                         with patch("sys.exit") as mock_exit:
                                             mock_exit.side_effect = SystemExit(0)
 
-                                            try:
+                                            with suppress(SystemExit):
                                                 git_commitai.main()
-                                            except SystemExit:
-                                                pass  # Expected
 
                                             # Dry run should work with verbose
                                             mock_show_summary.assert_called_once()
@@ -375,10 +356,8 @@ class TestDryRunFlag:
                                         with patch("sys.exit") as mock_exit:
                                             mock_exit.side_effect = SystemExit(0)
 
-                                            try:
+                                            with suppress(SystemExit):
                                                 git_commitai.main()
-                                            except SystemExit:
-                                                pass  # Expected
 
                                             # Verify amend was passed through
                                             args = mock_show_summary.call_args[0][0]
@@ -415,10 +394,8 @@ class TestDryRunFlag:
                                         with patch("sys.exit") as mock_exit:
                                             mock_exit.side_effect = SystemExit(0)
 
-                                            try:
+                                            with suppress(SystemExit):
                                                 git_commitai.main()
-                                            except SystemExit:
-                                                pass  # Expected
 
                                             # Verify message was passed through
                                             args = mock_show_summary.call_args[0][0]
@@ -454,10 +431,8 @@ class TestDryRunFlag:
                                         with patch("sys.exit") as mock_exit:
                                             mock_exit.side_effect = SystemExit(0)
 
-                                            try:
+                                            with suppress(SystemExit):
                                                 git_commitai.main()
-                                            except SystemExit:
-                                                pass  # Expected
 
                                             # API request SHOULD be made (happens before dry-run check)
                                             mock_api.assert_called_once()
@@ -494,10 +469,8 @@ class TestDryRunFlag:
                                             with patch("sys.exit") as mock_exit:
                                                 mock_exit.side_effect = SystemExit(0)
 
-                                                try:
+                                                with suppress(SystemExit):
                                                     git_commitai.main()
-                                                except SystemExit:
-                                                    pass  # Expected
 
                                                 # create_commit_message_file should NOT be called
                                                 mock_create.assert_not_called()
@@ -534,10 +507,8 @@ class TestDryRunFlag:
                                             with patch("sys.exit") as mock_exit:
                                                 mock_exit.side_effect = SystemExit(0)
 
-                                                try:
+                                                with suppress(SystemExit):
                                                     git_commitai.main()
-                                                except SystemExit:
-                                                    pass  # Expected
 
                                                 # Editor should NOT be opened
                                                 mock_editor.assert_not_called()
@@ -574,10 +545,8 @@ class TestDryRunFlag:
                                             with patch("sys.exit") as mock_exit:
                                                 mock_exit.side_effect = SystemExit(0)
 
-                                                try:
+                                                with suppress(SystemExit):
                                                     git_commitai.main()
-                                                except SystemExit:
-                                                    pass  # Expected
 
                                                 # Debug log should mention dry-run mode
                                                 debug_calls = [str(call) for call in mock_debug.call_args_list]
@@ -608,10 +577,8 @@ class TestDryRunFlag:
             with patch("sys.exit") as mock_exit:
                 mock_exit.side_effect = SystemExit(0)
 
-                try:
+                with suppress(SystemExit):
                     git_commitai.show_dry_run_summary(args)
-                except SystemExit:
-                    pass
 
                 # Verify the exact command structure
                 call_args = mock_run.call_args[0][0]
@@ -621,4 +588,4 @@ class TestDryRunFlag:
                 assert "-m" in call_args
 
                 # Check that subprocess.run was called with check=False
-                assert mock_run.call_args[1].get('check', True) == False
+                assert not mock_run.call_args[1].get('check', True)
