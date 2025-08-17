@@ -304,10 +304,11 @@ class TestAllowEmptyFlag:
                                                         c for c in mock_run.call_args_list
                                                         if c.args and isinstance(c.args[0], list) and "commit" in c.args[0]
                                                     ]
-                                                    if commit_calls:
-                                                        last_cmd = commit_calls[-1].args[0]
-                                                        assert "--allow-empty" in last_cmd
-                                                        assert "--no-verify" in last_cmd
+
+                                                    assert commit_calls, "Expected a git commit invocation but none was recorded"
+                                                    last_cmd = commit_calls[-1].args[0]
+                                                    assert "--allow-empty" in last_cmd
+                                                    assert "--no-verify" in last_cmd
 
 
     def test_allow_empty_with_verbose(self):
