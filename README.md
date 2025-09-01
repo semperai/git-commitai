@@ -558,3 +558,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## 🌟 Star History
 
 [![Star History](https://api.star-history.com/svg?repos=semperai/git-commitai&type=Date)](https://star-history.com/#semperai/git-commitai&Date)
+
+
+<!-- Security scan triggered at 2025-09-02 00:22:06 -->
